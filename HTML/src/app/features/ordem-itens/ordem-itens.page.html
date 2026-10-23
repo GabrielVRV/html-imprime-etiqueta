@@ -1,16 +1,29 @@
 <po-page-default [p-title]="titulo()" [p-breadcrumb]="breadcrumb()" [p-actions]="acoes()">
-  <po-table
-    [p-columns]="colunas"
-    [p-items]="linhas()"
-    [p-loading]="carregando()"
-    [p-selectable]="true"
-    [p-striped]="true"
-    [p-hide-columns-manager]="true"
-    (p-selected)="atualizarSelecao()"
-    (p-unselected)="atualizarSelecao()"
-    (p-all-selected)="atualizarSelecao()"
-    (p-all-unselected)="atualizarSelecao()"
-  />
+  @if (ordem(); as ordem) {
+    <section class="app-cartao app-secao resumo">
+      @if (!semOrdem()) {
+        <po-info p-label="Item da ordem" [p-value]="ordem.descItem" />
+        <po-info p-label="Quantidade" [p-value]="(ordem.quantidadeOrdem | number: '1.0-4') ?? ''" />
+        <po-info p-label="Estado" [p-value]="ordem.estado" />
+      }
+      <po-info p-label="Itens pendentes" [p-value]="qtdPendentes() + ' de ' + linhas().length" />
+    </section>
+  }
+
+  <section class="app-cartao">
+    <po-table
+      [p-columns]="colunas()"
+      [p-items]="linhas()"
+      [p-loading]="carregando()"
+      [p-selectable]="true"
+      [p-hide-columns-manager]="true"
+      [p-text-wrap]="true"
+      (p-selected)="atualizarSelecao()"
+      (p-unselected)="atualizarSelecao()"
+      (p-all-selected)="atualizarSelecao()"
+      (p-all-unselected)="atualizarSelecao()"
+    />
+  </section>
 </po-page-default>
 
 <app-impressao-modal [itens]="selecionados()" [nrOrdProd]="nrOrdProd()" />

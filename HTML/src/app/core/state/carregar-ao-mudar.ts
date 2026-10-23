@@ -48,3 +48,8 @@ export function carregarAoMudar<P, T>(
     recarregar: () => recarga$.next(),
   };
 }
+
+/** Variante sem parâmetro: busca ao criar e sempre que recarregar() for chamado. */
+export function carregar<T>(buscar: () => Observable<T>): Carregamento<T> {
+  return carregarAoMudar(signal(undefined), buscar);
+}

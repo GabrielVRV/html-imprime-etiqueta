@@ -15,10 +15,3 @@ export interface Pedido {
 export interface PedidoDetalhe extends Pedido {
   ordens: Ordem[];
 }
-
-export interface FiltroPedidos {
-  /** ISO yyyy-mm-dd */
-  dataEntregaInicial: string;
-  /** ISO yyyy-mm-dd */
-  dataEntregaFinal: string;
-}

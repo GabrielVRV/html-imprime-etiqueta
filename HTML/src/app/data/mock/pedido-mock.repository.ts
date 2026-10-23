@@ -2,14 +2,7 @@ import { Injectable } from '@angular/core';
 import { delay, Observable, of, throwError } from 'rxjs';
 
 import { ApiError } from '../../core/api/api-error';
-import {
-  FiltroPedidos,
-  ItemSeparacao,
-  Ordem,
-  OrdemDetalhe,
-  Pedido,
-  PedidoDetalhe,
-} from '../../domain/models';
+import { ItemSeparacao, Ordem, OrdemDetalhe, Pedido, PedidoDetalhe } from '../../domain/models';
 import { estaPendente } from '../../domain/rules/etiqueta.rules';
 import { PedidoRepository } from '../../domain/repositories/pedido.repository';
 import { PEDIDOS_MOCK, PedidoMock } from './mock-data';
@@ -29,13 +22,8 @@ const toPedido = ({ ordens, ...pedido }: PedidoMock): Pedido => ({
 
 @Injectable()
 export class PedidoMockRepository extends PedidoRepository {
-  listarPedidos(filtro: FiltroPedidos): Observable<Pedido[]> {
-    const pedidos = PEDIDOS_MOCK.filter(
-      ({ dataEntrega }) =>
-        !!dataEntrega &&
-        dataEntrega >= filtro.dataEntregaInicial &&
-        dataEntrega <= filtro.dataEntregaFinal,
-    ).map(toPedido);
+  listarPedidos(): Observable<Pedido[]> {
+    const pedidos = PEDIDOS_MOCK.map(toPedido).filter((pedido) => pedido.qtdItensPendentes > 0);
     return of(pedidos).pipe(delay(LATENCIA_MS));
   }
 

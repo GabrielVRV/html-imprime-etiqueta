@@ -37,7 +37,7 @@ Base: `/api/cpp/v1/api_imprime_etiqueta/` — todas `POST`, erros de negócio em
 
 | Rota | Payload | Retorno |
 |---|---|---|
-| `pedidos/` | `dt_entrega_ini`, `dt_entrega_fim` | `tt_pedido` |
+| `pedidos/` | — (só pedidos em aberto com item pendente) | `tt_pedido` |
 | `pedido/` | `nr_pedido` | `tt_pedido`, `tt_ordem` |
 | `ordem/` | `nr_pedido`, `nr_ord_prod` (0 = itens sem ordem) | `tt_ordem`, `tt_item` |
 | `impressoras/` | — | `tt_impressora` |
@@ -54,7 +54,7 @@ cd HTML
 npm install
 npm start          # http://localhost:4200 com dados mock
 npm test           # testes unitários (Vitest)
-npm run build      # build de produção em HTML/dist/imprime-etiqueta/browser
+npm run build      # build de produção em HTML/dist/imprime-etiqueta
 ```
 
 > `npm install` com o npm 10 falhou com `Cannot read properties of null (reading 'edgesOut')`;
@@ -65,13 +65,13 @@ npm run build      # build de produção em HTML/dist/imprime-etiqueta/browser
 1. Compilar `_Progress/api_imprime_etiqueta.p`, `api_imprime_etiquetarp.p` e
    `etiqueta-item-fila.p` (o `.i` vai em `include/`; os `.p` em `cpp/`, igual ao Pedidos Sequenciados).
 2. Publicar a API no mesmo módulo `cpp` das outras APIs.
-3. `npm run build` e copiar o conteúdo de `HTML/dist/imprime-etiqueta/browser/` para a pasta HTML publicada no Datasul.
+3. `npm run build` e copiar o conteúdo de `HTML/dist/imprime-etiqueta/` para a pasta HTML publicada no Datasul.
 
 ## Roteiro de testes no servidor
 
 1. **Compilação** dos três `.p` sem erro (confirmar nomes de campos: `ord-prod.nr-ord-produ`,
    `reservas.quant-orig/quant-atend`, `es-ped-item-separ.qt-separada`, `impressoras-etiqueta.area/endereco`).
-2. **`pedidos/`** com um período conhecido: os pedidos batem com o Pedidos Sequenciados?
+2. **`pedidos/`**: traz só pedidos com item pendente? Medir o tempo de resposta - sem filtro de data ele percorre todos os pedidos em aberto.
 3. **`pedido/` e `ordem/`** de um pedido conferido na mão: ordens, itens e pendentes batem com a ESFT4006?
    Conferir se faz sentido ignorar subconjuntos com OP própria e as linhas `6,23,24,33,34`.
 4. **`impressoras/`** traz a mesma lista do combo da ESCP1001.

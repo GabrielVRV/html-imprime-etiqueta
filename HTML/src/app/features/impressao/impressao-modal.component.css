@@ -1,6 +1,9 @@
-.linhas {
-  max-height: 50vh;
-  overflow-y: auto;
+/* No celular quem rola é o próprio modal; rolagem dentro de rolagem atrapalha no toque. */
+@media (min-width: 768px) {
+  .linhas {
+    max-height: 50vh;
+    overflow-y: auto;
+  }
 }
 
 .linha {

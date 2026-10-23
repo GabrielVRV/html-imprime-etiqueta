@@ -1,5 +1,54 @@
+/* Escala da cor da marca (#025BA8) no lugar do roxo padrão do PO-UI.
+   Todo componente PO (botões, links, seleção, progresso, foco) lê destas variáveis. */
+:root {
+  --color-brand-01-lightest: #e8f1f9;
+  --color-brand-01-lighter: #c2daef;
+  --color-brand-01-light: #7fb0dc;
+  --color-brand-01-base: #025ba8;
+  --color-brand-01-dark: #02498a;
+  --color-brand-01-darker: #01386a;
+  --color-brand-01-darkest: #00254a;
+
+  --app-fundo: #f3f6f9;
+}
+
 html,
 body {
   height: 100%;
   margin: 0;
+}
+
+body {
+  background: var(--app-fundo);
+}
+
+/* As páginas PO são brancas por padrão; o fundo cinza claro destaca os cartões. */
+po-page-default .po-page,
+po-page-list .po-page {
+  background: var(--app-fundo);
+}
+
+.app-cartao {
+  display: block;
+  background: var(--color-neutral-light-00, #fff);
+  border: 1px solid var(--color-neutral-light-20, #e3e9ef);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+@media (max-width: 767.98px) {
+  .app-cartao {
+    padding: 8px;
+  }
+
+  /* No celular o espaçamento padrão das células do PO-UI (16px) força rolagem lateral. */
+  .app-cartao .po-table th,
+  .app-cartao .po-table td {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+}
+
+.app-secao {
+  margin-bottom: 16px;
 }

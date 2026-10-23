@@ -6,10 +6,6 @@ export function dataIso(data: Date): string {
   return `${ano}-${mes}-${dia}`;
 }
 
-export function paraIso(data: string | Date): string {
-  return typeof data === 'string' ? data.slice(0, 10) : dataIso(data);
-}
-
 export function hojeMaisDias(dias: number): string {
   const data = new Date();
   data.setDate(data.getDate() + dias);

@@ -12,19 +12,17 @@ import {
   PoBreadcrumb,
   PoInfoModule,
   PoPageModule,
-  PoTableAction,
   PoTableColumn,
   PoTableModule,
-  PoWidgetModule,
 } from '@po-ui/ng-components';
 
+import { telaPequena } from '../../core/layout/tela-pequena';
 import { carregarAoMudar } from '../../core/state/carregar-ao-mudar';
 import { NR_ORDEM_SEM_ORDEM, Ordem } from '../../domain/models';
 import { PedidoRepository } from '../../domain/repositories/pedido.repository';
 import { percentualSeparado } from '../../domain/rules/etiqueta.rules';
 import { ProgressoSeparacaoComponent } from '../../shared/components/progresso-separacao.component';
 import {
-  colunaProgresso,
   colunaSituacao,
   SituacaoSeparacao,
   situacaoSeparacao,
@@ -33,7 +31,6 @@ import {
 interface LinhaOrdem extends Ordem {
   ordem: string;
   sequencia: string;
-  percentualSeparado: number;
   situacao: SituacaoSeparacao;
 }
 
@@ -43,27 +40,21 @@ const toLinha = (ordem: Ordem): LinhaOrdem => {
     ...ordem,
     ordem: semOrdem ? 'Sem ordem' : String(ordem.nrOrdProd),
     sequencia: semOrdem ? '' : String(ordem.nrSequencia),
-    percentualSeparado: percentualSeparado(ordem.qtdItens, ordem.qtdItensPendentes),
     situacao: situacaoSeparacao(ordem.qtdItensPendentes),
   };
 };
 
 @Component({
   selector: 'app-pedido-detalhe-page',
-  imports: [
-    DatePipe,
-    PoPageModule,
-    PoTableModule,
-    PoWidgetModule,
-    PoInfoModule,
-    ProgressoSeparacaoComponent,
-  ],
+  imports: [DatePipe, PoPageModule, PoTableModule, PoInfoModule, ProgressoSeparacaoComponent],
   templateUrl: './pedido-detalhe.page.html',
+  styleUrl: '../../shared/styles/resumo.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PedidoDetalhePage {
   private readonly router = inject(Router);
   private readonly repository = inject(PedidoRepository);
+  private readonly pequena = telaPequena();
 
   readonly nrPedido = input.required({ transform: numberAttribute });
 
@@ -83,20 +74,21 @@ export class PedidoDetalhePage {
     items: [{ label: 'Pedidos', link: '/pedidos' }, { label: `Pedido ${this.nrPedido()}` }],
   }));
 
-  protected readonly colunas: PoTableColumn[] = [
-    { property: 'ordem', label: 'Ordem', width: '120px' },
-    { property: 'sequencia', label: 'Seq.', width: '70px' },
-    { property: 'itCodigo', label: 'Item' },
+  protected readonly colunas = computed<PoTableColumn[]>(() => [
+    {
+      property: 'ordem',
+      label: 'Ordem',
+      type: 'link',
+      width: this.pequena() ? undefined : '110px',
+      action: (_: string, ordem: LinhaOrdem) => this.abrir(ordem),
+    },
+    { property: 'sequencia', label: 'Seq.', width: '70px', visible: !this.pequena() },
+    { property: 'itCodigo', label: 'Item', visible: !this.pequena() },
     { property: 'descItem', label: 'Descrição' },
-    { property: 'estado', label: 'Estado', width: '110px' },
-    { property: 'qtdItensPendentes', label: 'Itens pendentes', type: 'number', width: '140px' },
-    colunaProgresso,
-    colunaSituacao('Completa'),
-  ];
-
-  protected readonly acoes: PoTableAction[] = [
-    { label: 'Ver itens', action: (linha: LinhaOrdem) => this.abrir(linha) },
-  ];
+    { property: 'estado', label: 'Estado', width: '110px', visible: !this.pequena() },
+    { property: 'qtdItensPendentes', label: 'Pendentes', type: 'number' },
+    { ...colunaSituacao('Completa'), visible: !this.pequena() },
+  ]);
 
   private abrir(ordem: Ordem): void {
     this.router.navigate(['/pedidos', this.nrPedido(), 'ordens', ordem.nrOrdProd]);

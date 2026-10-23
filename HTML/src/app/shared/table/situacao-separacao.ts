@@ -15,10 +15,3 @@ export const colunaSituacao = (rotuloCompleto = 'Completo'): PoTableColumn => ({
     { value: 'completo', label: rotuloCompleto, type: PoTagType.Success },
   ],
 });
-
-export const colunaProgresso: PoTableColumn = {
-  property: 'percentualSeparado',
-  label: 'Separação',
-  type: 'columnTemplate',
-  width: '200px',
-};

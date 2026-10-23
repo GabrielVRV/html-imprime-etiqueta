@@ -3,7 +3,7 @@ import { map, Observable } from 'rxjs';
 
 import { ApiError } from '../../core/api/api-error';
 import { TotvsApiClient } from '../../core/api/totvs-api.client';
-import { FiltroPedidos, OrdemDetalhe, Pedido, PedidoDetalhe } from '../../domain/models';
+import { OrdemDetalhe, Pedido, PedidoDetalhe } from '../../domain/models';
 import { PedidoRepository } from '../../domain/repositories/pedido.repository';
 import { ListarPedidosResposta, ObterOrdemResposta, ObterPedidoResposta } from './dtos';
 import { toItemSeparacao, toOrdem, toPedido } from './mappers';
@@ -12,12 +12,9 @@ import { toItemSeparacao, toOrdem, toPedido } from './mappers';
 export class PedidoHttpRepository extends PedidoRepository {
   private readonly api = inject(TotvsApiClient);
 
-  listarPedidos(filtro: FiltroPedidos): Observable<Pedido[]> {
+  listarPedidos(): Observable<Pedido[]> {
     return this.api
-      .post<ListarPedidosResposta>('pedidos/', {
-        dt_entrega_ini: filtro.dataEntregaInicial,
-        dt_entrega_fim: filtro.dataEntregaFinal,
-      })
+      .post<ListarPedidosResposta>('pedidos/')
       .pipe(map((resposta) => (resposta.tt_pedido ?? []).map(toPedido)));
   }
 

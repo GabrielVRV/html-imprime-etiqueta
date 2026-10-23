@@ -49,7 +49,7 @@ export interface ListarPedidosResposta extends RespostaTotvs {
 }
 
 export interface ObterPedidoResposta extends RespostaTotvs {
-  tt_pedido?: PedidoDto[];  
+  tt_pedido?: PedidoDto[];
   tt_ordem?: OrdemDto[];
 }
 
