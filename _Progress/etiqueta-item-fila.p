@@ -40,21 +40,6 @@ DEFINE VARIABLE iIdEtiqueta1 AS INTEGER   NO-UNDO.
 DEFINE VARIABLE iIdEtiqueta2 AS INTEGER   NO-UNDO.
 DEFINE VARIABLE iFolha       AS INTEGER   NO-UNDO.
 
-FUNCTION fn-formata-quantidade RETURNS CHARACTER (INPUT pQuantidade AS DECIMAL):
-    DEFINE VARIABLE cTexto AS CHARACTER NO-UNDO.
-
-    cTexto = STRING(pQuantidade).
-    IF SESSION:NUMERIC-DECIMAL-POINT <> "," THEN
-        cTexto = REPLACE(cTexto, SESSION:NUMERIC-DECIMAL-POINT, ",").
-
-    IF INDEX(cTexto, ",") = 0 THEN
-        cTexto = cTexto + ",0".
-    IF pQuantidade < 1 THEN
-        cTexto = "0" + cTexto.
-
-    RETURN cTexto.
-END FUNCTION.
-
 cModelo = SEARCH("etiquetas/ITEM-CASP.prn").
 IF cModelo = ? THEN
     UNDO, THROW NEW Progress.Lang.AppError("Modelo etiquetas/ITEM-CASP.prn nao encontrado no PROPATH do servidor.", 1).
@@ -65,8 +50,17 @@ IF NOT AVAILABLE item THEN
 
 COPY-LOB FROM FILE cModelo TO lcModelo.
 
-ASSIGN cQuantidade  = fn-formata-quantidade(p-quantidade)
-       p-qtd-folhas = INTEGER(TRUNCATE((p-qtde-etiq + {&ETIQUETAS-POR-FOLHA} - 1) / {&ETIQUETAS-POR-FOLHA}, 0)).
+/* Quantidade sempre com virgula, no formato que o original gerava ("10,0", "0,5"),
+   independente do formato numerico da sessao do servidor. */
+cQuantidade = STRING(p-quantidade).
+IF SESSION:NUMERIC-DECIMAL-POINT <> "," THEN
+    cQuantidade = REPLACE(cQuantidade, SESSION:NUMERIC-DECIMAL-POINT, ",").
+IF INDEX(cQuantidade, ",") = 0 THEN
+    cQuantidade = cQuantidade + ",0".
+IF p-quantidade < 1 THEN
+    cQuantidade = "0" + cQuantidade.
+
+p-qtd-folhas = INTEGER(TRUNCATE((p-qtde-etiq + {&ETIQUETAS-POR-FOLHA} - 1) / {&ETIQUETAS-POR-FOLHA}, 0)).
 
 DO iFolha = 1 TO p-qtd-folhas:
     RUN pi-proximo-id (OUTPUT iIdEtiqueta1).

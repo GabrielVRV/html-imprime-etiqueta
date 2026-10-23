@@ -21,56 +21,27 @@ BLOCK-LEVEL ON ERROR UNDO, THROW.
 &GLOBAL-DEFINE MAXIMO-ETIQUETAS 999
 &GLOBAL-DEFINE ESTADOS-ORDEM "Nao Iniciada,Liberada,Alocada,Separada,Requisitada,Iniciada,Finalizada,Terminada"
 
-FUNCTION fn-desc-item RETURNS CHARACTER (INPUT pItCodigo AS CHARACTER):
-    DEFINE BUFFER bItem FOR item.
-
-    FIND FIRST bItem NO-LOCK WHERE bItem.it-codigo = pItCodigo NO-ERROR.
-    RETURN IF AVAILABLE bItem THEN bItem.desc-item ELSE "".
-END FUNCTION.
-
-FUNCTION fn-un-item RETURNS CHARACTER (INPUT pItCodigo AS CHARACTER):
-    DEFINE BUFFER bItem FOR item.
-
-    FIND FIRST bItem NO-LOCK WHERE bItem.it-codigo = pItCodigo NO-ERROR.
-    RETURN IF AVAILABLE bItem THEN bItem.un ELSE "".
-END FUNCTION.
-
-FUNCTION fn-estado-ordem RETURNS CHARACTER (INPUT pEstado AS INTEGER):
-    IF pEstado >= 1 AND pEstado <= NUM-ENTRIES({&ESTADOS-ORDEM}) THEN
-        RETURN ENTRY(pEstado, {&ESTADOS-ORDEM}).
-    RETURN STRING(pEstado).
-END FUNCTION.
-
-FUNCTION fn-linha-valida RETURNS LOGICAL (INPUT pNrLinha AS INTEGER):
-    RETURN LOOKUP(STRING(pNrLinha), {&LINHAS-VALIDAS}) > 0.
-END FUNCTION.
-
 
 /* ---------------------------------------------------------
    Rotas
    --------------------------------------------------------- */
+
+/* Lista so o que a separacao precisa: pedidos em aberto com pelo menos
+   um item pendente. Situacao igual ao Pedidos Sequenciados: fora
+   atendidos totalmente, suspensos, cancelados e pendentes sem saldo. */
 PROCEDURE pi-listar-pedidos:
-    DEFINE INPUT  PARAMETER pDtEntregaIni AS DATE NO-UNDO.
-    DEFINE INPUT  PARAMETER pDtEntregaFim AS DATE NO-UNDO.
     DEFINE OUTPUT PARAMETER TABLE FOR tt_pedido.
 
     EMPTY TEMP-TABLE tt_pedido.
 
-    IF pDtEntregaIni = ? OR pDtEntregaFim = ? THEN
-        UNDO, THROW NEW Progress.Lang.AppError("Informe o periodo de entrega.", 1).
-
-    /* Mesmo filtro de situacao do Pedidos Sequenciados: fora atendidos
-       totalmente, suspensos, cancelados e pendentes sem saldo em aberto. */
     FOR EACH ped-venda NO-LOCK
-       WHERE ped-venda.dt-entrega >= pDtEntregaIni
-         AND ped-venda.dt-entrega <= pDtEntregaFim
-         AND ped-venda.cod-sit-ped <> 3
+       WHERE ped-venda.cod-sit-ped <> 3
          AND ped-venda.cod-sit-ped <> 5
          AND ped-venda.cod-sit-ped <> 6
          AND (ped-venda.cod-sit-ped <> 4 OR ped-venda.vl-liq-abe > 0):
 
         RUN pi-monta-pedido (BUFFER ped-venda).
-        IF CAN-FIND(FIRST tt_item) THEN
+        IF CAN-FIND(FIRST tt_item WHERE tt_item.quant_pendente > 0) THEN
             RUN pi-cria-tt-pedido (BUFFER ped-venda).
     END.
 END PROCEDURE.
@@ -189,7 +160,7 @@ PROCEDURE pi-monta-pedido PRIVATE:
              AND bOrdProd.nr-pedido    = ped-item.nr-pedcli
              AND bOrdProd.nr-sequencia = ped-item.nr-sequencia:
 
-            IF NOT fn-linha-valida(bOrdProd.nr-linha) THEN NEXT.
+            IF LOOKUP(STRING(bOrdProd.nr-linha), {&LINHAS-VALIDAS}) = 0 THEN NEXT.
 
             lTemOrdem = YES.
             RUN pi-adiciona-ordem (BUFFER bOrdProd, BUFFER ped-item).
@@ -208,14 +179,19 @@ PROCEDURE pi-adiciona-ordem PRIVATE:
     DEFINE PARAMETER BUFFER pPedItem FOR ped-item.
 
     DEFINE BUFFER bSubconjunto FOR ord-prod.
+    DEFINE BUFFER bItem        FOR item.
+
+    FIND FIRST bItem NO-LOCK WHERE bItem.it-codigo = pOrdProd.it-codigo NO-ERROR.
 
     CREATE tt_ordem.
     ASSIGN tt_ordem.nr_ord_prod  = pOrdProd.nr-ord-produ
            tt_ordem.nr_sequencia = pOrdProd.nr-sequencia
            tt_ordem.it_codigo    = pOrdProd.it-codigo
-           tt_ordem.desc_item    = fn-desc-item(pOrdProd.it-codigo)
+           tt_ordem.desc_item    = IF AVAILABLE bItem THEN bItem.desc-item ELSE ""
            tt_ordem.qt_ordem     = pOrdProd.qt-ordem
-           tt_ordem.estado       = fn-estado-ordem(pOrdProd.estado).
+           tt_ordem.estado       = IF pOrdProd.estado >= 1 AND pOrdProd.estado <= NUM-ENTRIES({&ESTADOS-ORDEM})
+                                   THEN ENTRY(pOrdProd.estado, {&ESTADOS-ORDEM})
+                                   ELSE STRING(pOrdProd.estado).
 
     FOR EACH reservas OF pOrdProd NO-LOCK:
         IF CAN-FIND(FIRST bSubconjunto
@@ -242,6 +218,10 @@ PROCEDURE pi-adiciona-item-sem-ordem PRIVATE:
         CREATE tt_ordem.
         ASSIGN tt_ordem.nr_ord_prod = 0
                tt_ordem.desc_item   = "Itens do pedido sem ordem de producao".
+        /* nr_ord_prod = 0 e' o valor inicial: sem mudanca na chave o ABL so'
+           grava o indice quando o registro sai do buffer, e o CAN-FIND do
+           proximo item sem ordem nao o enxergaria (erro 132). */
+        RELEASE tt_ordem.
     END.
 
     FOR EACH es-ped-item-separ NO-LOCK
@@ -267,15 +247,19 @@ PROCEDURE pi-acumula-item PRIVATE:
     DEFINE INPUT PARAMETER pQtOrig    AS DECIMAL   NO-UNDO.
     DEFINE INPUT PARAMETER pQtAtend   AS DECIMAL   NO-UNDO.
 
+    DEFINE BUFFER bItem FOR item.
+
     FIND tt_item
         WHERE tt_item.nr_ord_prod = pNrOrdProd
           AND tt_item.it_codigo   = pItCodigo NO-ERROR.
     IF NOT AVAILABLE tt_item THEN DO:
+        FIND FIRST bItem NO-LOCK WHERE bItem.it-codigo = pItCodigo NO-ERROR.
+
         CREATE tt_item.
         ASSIGN tt_item.nr_ord_prod = pNrOrdProd
                tt_item.it_codigo   = pItCodigo
-               tt_item.desc_item   = fn-desc-item(pItCodigo)
-               tt_item.un          = fn-un-item(pItCodigo).
+               tt_item.desc_item   = IF AVAILABLE bItem THEN bItem.desc-item ELSE ""
+               tt_item.un          = IF AVAILABLE bItem THEN bItem.un ELSE "".
     END.
 
     ASSIGN tt_item.quant_orig     = tt_item.quant_orig  + pQtOrig

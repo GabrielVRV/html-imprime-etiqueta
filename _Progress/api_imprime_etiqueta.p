@@ -23,40 +23,6 @@
 
 DEFINE VARIABLE hRegras AS HANDLE NO-UNDO.
 
-/* O ut-api.i entrega o envelope inteiro da requisicao; o corpo do POST
-   fica em "payload". */
-FUNCTION fn-payload RETURNS Progress.Json.ObjectModel.JsonObject
-    (INPUT jsonInput AS Progress.Json.ObjectModel.JsonObject):
-
-    IF VALID-OBJECT(jsonInput) AND jsonInput:Has("payload") THEN
-        RETURN jsonInput:GetJsonObject("payload").
-    RETURN NEW Progress.Json.ObjectModel.JsonObject().
-END FUNCTION.
-
-FUNCTION fn-inteiro RETURNS INTEGER
-    (INPUT oPayload AS Progress.Json.ObjectModel.JsonObject, INPUT cCampo AS CHARACTER):
-
-    IF oPayload:Has(cCampo) AND NOT oPayload:IsNull(cCampo) THEN
-        RETURN oPayload:GetInteger(cCampo).
-    RETURN 0.
-END FUNCTION.
-
-FUNCTION fn-texto RETURNS CHARACTER
-    (INPUT oPayload AS Progress.Json.ObjectModel.JsonObject, INPUT cCampo AS CHARACTER):
-
-    IF oPayload:Has(cCampo) AND NOT oPayload:IsNull(cCampo) THEN
-        RETURN TRIM(oPayload:GetCharacter(cCampo)).
-    RETURN "".
-END FUNCTION.
-
-FUNCTION fn-data RETURNS DATE
-    (INPUT oPayload AS Progress.Json.ObjectModel.JsonObject, INPUT cCampo AS CHARACTER):
-
-    IF oPayload:Has(cCampo) AND NOT oPayload:IsNull(cCampo) THEN
-        RETURN oPayload:GetDate(cCampo).
-    RETURN ?.
-END FUNCTION.
-
 
 PROCEDURE pi-pedidos:
     DEFINE INPUT  PARAMETER jsonInput  AS Progress.Json.ObjectModel.JsonObject NO-UNDO.
@@ -64,12 +30,9 @@ PROCEDURE pi-pedidos:
 
     DEFINE VARIABLE oPayload AS Progress.Json.ObjectModel.JsonObject NO-UNDO.
 
-    RUN pi-inicia (OUTPUT jsonOutput).
-    oPayload = fn-payload(jsonInput).
+    RUN pi-inicia (INPUT jsonInput, OUTPUT jsonOutput, OUTPUT oPayload).
 
-    RUN pi-listar-pedidos IN hRegras (INPUT  fn-data(oPayload, "dt_entrega_ini"),
-                                       INPUT  fn-data(oPayload, "dt_entrega_fim"),
-                                       OUTPUT TABLE tt_pedido).
+    RUN pi-listar-pedidos IN hRegras (OUTPUT TABLE tt_pedido).
     RUN pi-adiciona-tabela (jsonOutput, TEMP-TABLE tt_pedido:HANDLE).
 
     CATCH eErro AS Progress.Lang.Error:
@@ -85,9 +48,15 @@ PROCEDURE pi-pedido:
     DEFINE INPUT  PARAMETER jsonInput  AS Progress.Json.ObjectModel.JsonObject NO-UNDO.
     DEFINE OUTPUT PARAMETER jsonOutput AS Progress.Json.ObjectModel.JsonObject NO-UNDO.
 
-    RUN pi-inicia (OUTPUT jsonOutput).
+    DEFINE VARIABLE oPayload  AS Progress.Json.ObjectModel.JsonObject NO-UNDO.
+    DEFINE VARIABLE iNrPedido AS INTEGER NO-UNDO.
 
-    RUN pi-obter-pedido IN hRegras (INPUT  fn-inteiro(fn-payload(jsonInput), "nr_pedido"),
+    RUN pi-inicia (INPUT jsonInput, OUTPUT jsonOutput, OUTPUT oPayload).
+
+    IF oPayload:Has("nr_pedido") THEN
+        iNrPedido = oPayload:GetInteger("nr_pedido").
+
+    RUN pi-obter-pedido IN hRegras (INPUT  iNrPedido,
                                      OUTPUT TABLE tt_pedido,
                                      OUTPUT TABLE tt_ordem).
     RUN pi-adiciona-tabela (jsonOutput, TEMP-TABLE tt_pedido:HANDLE).
@@ -106,13 +75,19 @@ PROCEDURE pi-ordem:
     DEFINE INPUT  PARAMETER jsonInput  AS Progress.Json.ObjectModel.JsonObject NO-UNDO.
     DEFINE OUTPUT PARAMETER jsonOutput AS Progress.Json.ObjectModel.JsonObject NO-UNDO.
 
-    DEFINE VARIABLE oPayload AS Progress.Json.ObjectModel.JsonObject NO-UNDO.
+    DEFINE VARIABLE oPayload   AS Progress.Json.ObjectModel.JsonObject NO-UNDO.
+    DEFINE VARIABLE iNrPedido  AS INTEGER NO-UNDO.
+    DEFINE VARIABLE iNrOrdProd AS INTEGER NO-UNDO.
 
-    RUN pi-inicia (OUTPUT jsonOutput).
-    oPayload = fn-payload(jsonInput).
+    RUN pi-inicia (INPUT jsonInput, OUTPUT jsonOutput, OUTPUT oPayload).
 
-    RUN pi-obter-ordem IN hRegras (INPUT  fn-inteiro(oPayload, "nr_pedido"),
-                                    INPUT  fn-inteiro(oPayload, "nr_ord_prod"),
+    IF oPayload:Has("nr_pedido") THEN
+        iNrPedido = oPayload:GetInteger("nr_pedido").
+    IF oPayload:Has("nr_ord_prod") THEN
+        iNrOrdProd = oPayload:GetInteger("nr_ord_prod").
+
+    RUN pi-obter-ordem IN hRegras (INPUT  iNrPedido,
+                                    INPUT  iNrOrdProd,
                                     OUTPUT TABLE tt_ordem,
                                     OUTPUT TABLE tt_item).
     RUN pi-adiciona-tabela (jsonOutput, TEMP-TABLE tt_ordem:HANDLE).
@@ -131,7 +106,9 @@ PROCEDURE pi-impressoras:
     DEFINE INPUT  PARAMETER jsonInput  AS Progress.Json.ObjectModel.JsonObject NO-UNDO.
     DEFINE OUTPUT PARAMETER jsonOutput AS Progress.Json.ObjectModel.JsonObject NO-UNDO.
 
-    RUN pi-inicia (OUTPUT jsonOutput).
+    DEFINE VARIABLE oPayload AS Progress.Json.ObjectModel.JsonObject NO-UNDO.
+
+    RUN pi-inicia (INPUT jsonInput, OUTPUT jsonOutput, OUTPUT oPayload).
 
     RUN pi-listar-impressoras IN hRegras (OUTPUT TABLE tt_impressora).
     RUN pi-adiciona-tabela (jsonOutput, TEMP-TABLE tt_impressora:HANDLE).
@@ -149,18 +126,24 @@ PROCEDURE pi-imprimir:
     DEFINE INPUT  PARAMETER jsonInput  AS Progress.Json.ObjectModel.JsonObject NO-UNDO.
     DEFINE OUTPUT PARAMETER jsonOutput AS Progress.Json.ObjectModel.JsonObject NO-UNDO.
 
-    DEFINE VARIABLE oPayload AS Progress.Json.ObjectModel.JsonObject NO-UNDO.
+    DEFINE VARIABLE oPayload    AS Progress.Json.ObjectModel.JsonObject NO-UNDO.
+    DEFINE VARIABLE cImpressora AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE cLote       AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE cSerie      AS CHARACTER NO-UNDO.
 
-    RUN pi-inicia (OUTPUT jsonOutput).
-    oPayload = fn-payload(jsonInput).
+    RUN pi-inicia (INPUT jsonInput, OUTPUT jsonOutput, OUTPUT oPayload).
+
+    IF oPayload:Has("impressora") THEN cImpressora = TRIM(oPayload:GetCharacter("impressora")).
+    IF oPayload:Has("lote")       THEN cLote       = TRIM(oPayload:GetCharacter("lote")).
+    IF oPayload:Has("serie")      THEN cSerie      = TRIM(oPayload:GetCharacter("serie")).
 
     EMPTY TEMP-TABLE tt_etiqueta.
     IF oPayload:Has("tt_etiqueta") THEN
         TEMP-TABLE tt_etiqueta:READ-JSON("JsonArray", oPayload:GetJsonArray("tt_etiqueta"), "EMPTY").
 
-    RUN pi-imprimir IN hRegras (INPUT  fn-texto(oPayload, "impressora"),
-                                 INPUT  fn-texto(oPayload, "lote"),
-                                 INPUT  fn-texto(oPayload, "serie"),
+    RUN pi-imprimir IN hRegras (INPUT  cImpressora,
+                                 INPUT  cLote,
+                                 INPUT  cSerie,
                                  INPUT  TABLE tt_etiqueta,
                                  OUTPUT TABLE tt_resultado).
     RUN pi-adiciona-tabela (jsonOutput, TEMP-TABLE tt_resultado:HANDLE).
@@ -177,11 +160,23 @@ END PROCEDURE.
 /* ---------------------------------------------------------
    Infraestrutura comum das rotas
    --------------------------------------------------------- */
+
+/* O ut-api.i entrega o envelope inteiro da requisicao; o corpo do POST
+   fica em "payload". Sem corpo, devolve um objeto vazio para as rotas
+   nao precisarem testar VALID-OBJECT. */
 PROCEDURE pi-inicia PRIVATE:
+    DEFINE INPUT  PARAMETER jsonInput  AS Progress.Json.ObjectModel.JsonObject NO-UNDO.
     DEFINE OUTPUT PARAMETER jsonOutput AS Progress.Json.ObjectModel.JsonObject NO-UNDO.
+    DEFINE OUTPUT PARAMETER oPayload   AS Progress.Json.ObjectModel.JsonObject NO-UNDO.
 
     EMPTY TEMP-TABLE tt_retorno.
     jsonOutput = NEW Progress.Json.ObjectModel.JsonObject().
+
+    IF VALID-OBJECT(jsonInput) AND jsonInput:Has("payload") THEN
+        oPayload = jsonInput:GetJsonObject("payload").
+    ELSE
+        oPayload = NEW Progress.Json.ObjectModel.JsonObject().
+
     RUN cpp/api_imprime_etiquetarp.p PERSISTENT SET hRegras.
 END PROCEDURE.
 
