@@ -1,0 +1,16 @@
+<po-page-default [p-title]="titulo()" [p-breadcrumb]="breadcrumb()" [p-actions]="acoes()">
+  <po-table
+    [p-columns]="colunas"
+    [p-items]="linhas()"
+    [p-loading]="carregando()"
+    [p-selectable]="true"
+    [p-striped]="true"
+    [p-hide-columns-manager]="true"
+    (p-selected)="atualizarSelecao()"
+    (p-unselected)="atualizarSelecao()"
+    (p-all-selected)="atualizarSelecao()"
+    (p-all-unselected)="atualizarSelecao()"
+  />
+</po-page-default>
+
+<app-impressao-modal [itens]="selecionados()" [nrOrdProd]="nrOrdProd()" />

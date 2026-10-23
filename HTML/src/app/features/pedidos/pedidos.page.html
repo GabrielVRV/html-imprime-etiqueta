@@ -1,0 +1,24 @@
+<po-page-list p-title="Etiquetas para separação" [p-filter]="pesquisa">
+  <div class="po-row">
+    <po-datepicker-range
+      class="po-sm-12 po-md-6 po-lg-4"
+      name="periodo"
+      p-label="Data de entrega"
+      [ngModel]="periodo()"
+      (ngModelChange)="alterarPeriodo($event)"
+    />
+  </div>
+
+  <po-table
+    [p-columns]="colunas"
+    [p-items]="linhas()"
+    [p-actions]="acoes"
+    [p-loading]="carregando()"
+    [p-striped]="true"
+    [p-hide-columns-manager]="true"
+  >
+    <ng-template p-table-column-template [p-property]="'percentualSeparado'" let-value>
+      <app-progresso-separacao [percentual]="value" />
+    </ng-template>
+  </po-table>
+</po-page-list>

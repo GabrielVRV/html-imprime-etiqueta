@@ -1,0 +1,60 @@
+<po-modal
+  p-title="Imprimir etiquetas"
+  p-size="lg"
+  [p-primary-action]="acaoImprimir()"
+  [p-secondary-action]="acaoCancelar"
+>
+  <form [formGroup]="form">
+    <div class="po-row">
+      <po-select
+        class="po-sm-12 po-md-6"
+        formControlName="impressora"
+        p-label="Impressora"
+        [p-options]="opcoesImpressora()"
+        [p-required]="true"
+      />
+      <po-input class="po-sm-6 po-md-3" formControlName="lote" p-label="Lote" [p-optional]="true" />
+      <po-input
+        class="po-sm-6 po-md-3"
+        formControlName="serie"
+        p-label="Série"
+        [p-optional]="true"
+      />
+    </div>
+
+    <div formArrayName="etiquetas" class="linhas">
+      @for (linha of etiquetas.controls; track $index; let i = $index) {
+        <div class="po-row linha" [formGroupName]="i">
+          <div class="po-sm-12 po-md-6 item">
+            <strong>{{ itensEmEdicao()[i].itCodigo }}</strong>
+            <span>{{ itensEmEdicao()[i].descItem }}</span>
+            <small
+              >Pendente: {{ itensEmEdicao()[i].quantidadePendente | number: '1.0-4' }}
+              {{ itensEmEdicao()[i].unidade }}</small
+            >
+          </div>
+          <po-decimal
+            class="po-sm-6 po-md-3"
+            formControlName="quantidadePorEtiqueta"
+            p-label="Qtd./etiqueta"
+            [p-decimals-length]="4"
+            [p-required]="true"
+          />
+          <po-number
+            class="po-sm-6 po-md-3"
+            formControlName="quantidadeEtiquetas"
+            p-label="Etiquetas"
+            [p-min]="1"
+            [p-max]="maximoEtiquetas"
+            [p-required]="true"
+          />
+        </div>
+      }
+    </div>
+  </form>
+
+  <p class="resumo">
+    Serão enviadas <strong>{{ resumo().folhas }}</strong> folha(s), com
+    <strong>{{ resumo().etiquetas }}</strong> etiqueta(s) — o modelo imprime 2 etiquetas por folha.
+  </p>
+</po-modal>

@@ -1,0 +1,31 @@
+<po-page-default [p-title]="'Pedido ' + nrPedido()" [p-breadcrumb]="breadcrumb()">
+  @if (pedido(); as pedido) {
+    <po-widget class="po-mb-2">
+      <div class="po-row">
+        <po-info class="po-sm-6 po-md-3" p-label="Cliente" [p-value]="pedido.nomeAbrev" />
+        <po-info class="po-sm-6 po-md-3" p-label="Pedido do cliente" [p-value]="pedido.nrPedCli" />
+        <po-info
+          class="po-sm-6 po-md-2"
+          p-label="Entrega"
+          [p-value]="(pedido.dataEntrega | date: 'dd/MM/yyyy') ?? ''"
+        />
+        <div class="po-sm-6 po-md-4">
+          <app-progresso-separacao [percentual]="percentual()" />
+        </div>
+      </div>
+    </po-widget>
+  }
+
+  <po-table
+    [p-columns]="colunas"
+    [p-items]="linhas()"
+    [p-actions]="acoes"
+    [p-loading]="carregando()"
+    [p-striped]="true"
+    [p-hide-columns-manager]="true"
+  >
+    <ng-template p-table-column-template [p-property]="'percentualSeparado'" let-value>
+      <app-progresso-separacao [percentual]="value" />
+    </ng-template>
+  </po-table>
+</po-page-default>
