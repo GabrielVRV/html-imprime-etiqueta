@@ -43,8 +43,9 @@
           <po-number
             class="po-sm-6 po-md-3"
             formControlName="quantidadeEtiquetas"
-            p-label="Etiquetas"
-            [p-min]="1"
+            p-label="Etiquetas (par)"
+            [p-min]="etiquetasPorFolha"
+            p-step="{{ etiquetasPorFolha }}"
             [p-max]="maximoEtiquetas"
             [p-required]="true"
           />

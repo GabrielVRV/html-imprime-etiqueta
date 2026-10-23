@@ -1,9 +1,9 @@
 import { ItemSeparacao } from '../models';
 import {
   estaPendente,
-  etiquetasImpressas,
   folhasNecessarias,
   percentualSeparado,
+  quantidadeEtiquetasValida,
   sugerirEtiqueta,
 } from './etiqueta.rules';
 
@@ -22,20 +22,26 @@ describe('etiqueta.rules', () => {
     expect(estaPendente(item(0))).toBe(false);
   });
 
-  it('arredonda folhas para cima, duas etiquetas por folha', () => {
-    expect(folhasNecessarias(1)).toBe(1);
+  it('calcula folhas com duas etiquetas por folha', () => {
     expect(folhasNecessarias(2)).toBe(1);
-    expect(folhasNecessarias(3)).toBe(2);
+    expect(folhasNecessarias(6)).toBe(3);
     expect(folhasNecessarias(0)).toBe(0);
-    expect(etiquetasImpressas(3)).toBe(4);
   });
 
-  it('sugere uma etiqueta com a quantidade pendente', () => {
+  it('aceita só quantidade de etiquetas par e positiva', () => {
+    expect(quantidadeEtiquetasValida(2)).toBe(true);
+    expect(quantidadeEtiquetasValida(10)).toBe(true);
+    expect(quantidadeEtiquetasValida(1)).toBe(false);
+    expect(quantidadeEtiquetasValida(3)).toBe(false);
+    expect(quantidadeEtiquetasValida(0)).toBe(false);
+  });
+
+  it('sugere uma folha (duas etiquetas) com a quantidade pendente', () => {
     expect(sugerirEtiqueta(item(7.5), 123)).toEqual({
       itCodigo: '10-001',
       nrOrdProd: 123,
       quantidadePorEtiqueta: 7.5,
-      quantidadeEtiquetas: 1,
+      quantidadeEtiquetas: 2,
     });
   });
 

@@ -6,12 +6,25 @@
         <po-info p-label="Quantidade" [p-value]="(ordem.quantidadeOrdem | number: '1.0-4') ?? ''" />
         <po-info p-label="Estado" [p-value]="ordem.estado" />
       }
-      <po-info p-label="Itens pendentes" [p-value]="qtdPendentes() + ' de ' + linhas().length" />
+      <po-info
+        p-label="Itens pendentes"
+        [p-value]="qtdPendentes() + ' de ' + (qtdPendentes() + qtdAtendidos())"
+      />
     </section>
   }
 
   <section class="app-cartao">
+    @if (qtdAtendidos() > 0) {
+      <po-switch
+        name="mostrarAtendidos"
+        [p-hide-label-status]="true"
+        [p-label]="'Mostrar atendidos (' + qtdAtendidos() + ')'"
+        [ngModel]="mostrarAtendidos()"
+        (ngModelChange)="mostrarAtendidos.set($event)"
+      />
+    }
     <po-table
+      [p-literals]="{ noData: 'Todos os itens desta ordem já foram atendidos' }"
       [p-columns]="colunas()"
       [p-items]="linhas()"
       [p-loading]="carregando()"

@@ -16,6 +16,7 @@ import {
   FormGroup,
   NonNullableFormBuilder,
   ReactiveFormsModule,
+  ValidatorFn,
   Validators,
 } from '@angular/forms';
 import {
@@ -32,8 +33,9 @@ import { PreferenciasService } from '../../core/preferencias/preferencias.servic
 import { EtiquetaSolicitada, ItemSeparacao } from '../../domain/models';
 import { ImpressaoRepository } from '../../domain/repositories/impressao.repository';
 import {
-  etiquetasImpressas,
+  ETIQUETAS_POR_FOLHA,
   folhasNecessarias,
+  quantidadeEtiquetasValida,
   sugerirEtiqueta,
 } from '../../domain/rules/etiqueta.rules';
 
@@ -42,7 +44,10 @@ type EtiquetaForm = FormGroup<{
   quantidadeEtiquetas: FormControl<number>;
 }>;
 
-const MAXIMO_ETIQUETAS_POR_ITEM = 999;
+const MAXIMO_ETIQUETAS_POR_ITEM = 998;
+
+const etiquetasPorFolhaInteira: ValidatorFn = (controle) =>
+  quantidadeEtiquetasValida(controle.value) ? null : { folhaIncompleta: true };
 
 @Component({
   selector: 'app-impressao-modal',
@@ -90,7 +95,7 @@ export class ImpressaoModalComponent {
     const quantidades = this.valores().etiquetas.map((e) => e.quantidadeEtiquetas || 0);
     return {
       folhas: quantidades.reduce((total, qtd) => total + folhasNecessarias(qtd), 0),
-      etiquetas: quantidades.reduce((total, qtd) => total + etiquetasImpressas(qtd), 0),
+      etiquetas: quantidades.reduce((total, qtd) => total + qtd, 0),
     };
   });
 
@@ -107,6 +112,7 @@ export class ImpressaoModalComponent {
   };
 
   protected readonly maximoEtiquetas = MAXIMO_ETIQUETAS_POR_ITEM;
+  protected readonly etiquetasPorFolha = ETIQUETAS_POR_FOLHA;
 
   constructor() {
     this.repository
@@ -146,7 +152,7 @@ export class ImpressaoModalComponent {
       ],
       quantidadeEtiquetas: [
         sugestao.quantidadeEtiquetas,
-        [Validators.required, Validators.min(1), Validators.max(MAXIMO_ETIQUETAS_POR_ITEM)],
+        [Validators.required, Validators.max(MAXIMO_ETIQUETAS_POR_ITEM), etiquetasPorFolhaInteira],
       ],
     });
   }

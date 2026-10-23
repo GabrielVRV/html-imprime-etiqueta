@@ -6,11 +6,14 @@ import {
   inject,
   linkedSignal,
   numberAttribute,
+  signal,
   viewChild,
 } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import {
   PoBreadcrumb,
+  PoFieldModule,
   PoInfoModule,
   PoPageAction,
   PoPageModule,
@@ -46,7 +49,15 @@ const toLinha = (item: ItemSeparacao): LinhaItem => ({
 
 @Component({
   selector: 'app-ordem-itens-page',
-  imports: [DecimalPipe, PoPageModule, PoTableModule, PoInfoModule, ImpressaoModalComponent],
+  imports: [
+    DecimalPipe,
+    FormsModule,
+    PoPageModule,
+    PoTableModule,
+    PoInfoModule,
+    PoFieldModule,
+    ImpressaoModalComponent,
+  ],
   templateUrl: './ordem-itens.page.html',
   styleUrl: '../../shared/styles/resumo.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -69,9 +80,17 @@ export class OrdemItensPage {
   protected readonly ordem = this.carregamento.dados;
   protected readonly carregando = this.carregamento.carregando;
 
-  protected readonly linhas = computed(() => (this.ordem()?.itens ?? []).map(toLinha));
+  /** Atendidos ficam ocultos por padrão; mostrar serve para reimprimir uma etiqueta. */
+  protected readonly mostrarAtendidos = signal(false);
+
+  // As linhas só são recriadas quando a ordem recarrega: alternar os atendidos não perde a seleção.
+  private readonly todasLinhas = computed(() => (this.ordem()?.itens ?? []).map(toLinha));
+  protected readonly linhas = computed(() =>
+    this.mostrarAtendidos() ? this.todasLinhas() : this.todasLinhas().filter(estaPendente),
+  );
   protected readonly semOrdem = computed(() => this.nrOrdProd() === NR_ORDEM_SEM_ORDEM);
-  protected readonly qtdPendentes = computed(() => this.linhas().filter(estaPendente).length);
+  protected readonly qtdPendentes = computed(() => this.todasLinhas().filter(estaPendente).length);
+  protected readonly qtdAtendidos = computed(() => this.todasLinhas().length - this.qtdPendentes());
   protected readonly selecionados = linkedSignal(() => this.linhas().filter((l) => l.$selected));
 
   protected readonly titulo = computed(() =>

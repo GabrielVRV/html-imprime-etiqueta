@@ -11,8 +11,9 @@ export function folhasNecessarias(quantidadeEtiquetas: number): number {
   return Math.ceil(Math.max(0, quantidadeEtiquetas) / ETIQUETAS_POR_FOLHA);
 }
 
-export function etiquetasImpressas(quantidadeEtiquetas: number): number {
-  return folhasNecessarias(quantidadeEtiquetas) * ETIQUETAS_POR_FOLHA;
+/** Só folhas inteiras: número ímpar sairia com uma etiqueta a mais do que o pedido. */
+export function quantidadeEtiquetasValida(quantidadeEtiquetas: number): boolean {
+  return quantidadeEtiquetas > 0 && quantidadeEtiquetas % ETIQUETAS_POR_FOLHA === 0;
 }
 
 export function sugerirEtiqueta(item: ItemSeparacao, nrOrdProd: number): EtiquetaSolicitada {
@@ -20,7 +21,7 @@ export function sugerirEtiqueta(item: ItemSeparacao, nrOrdProd: number): Etiquet
     itCodigo: item.itCodigo,
     nrOrdProd,
     quantidadePorEtiqueta: item.quantidadePendente,
-    quantidadeEtiquetas: 1,
+    quantidadeEtiquetas: ETIQUETAS_POR_FOLHA,
   };
 }
 

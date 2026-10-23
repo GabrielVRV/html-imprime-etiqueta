@@ -18,7 +18,7 @@ BLOCK-LEVEL ON ERROR UNDO, THROW.
 {include/api_imprime_etiqueta.i}
 
 &GLOBAL-DEFINE LINHAS-VALIDAS "6,23,24,33,34"
-&GLOBAL-DEFINE MAXIMO-ETIQUETAS 999
+&GLOBAL-DEFINE MAXIMO-ETIQUETAS 998
 &GLOBAL-DEFINE ESTADOS-ORDEM "Nao Iniciada,Liberada,Alocada,Separada,Requisitada,Iniciada,Finalizada,Terminada"
 
 
@@ -321,9 +321,14 @@ PROCEDURE pi-valida-impressao PRIVATE:
             UNDO, THROW NEW Progress.Lang.AppError(
                 SUBSTITUTE("Quantidade por etiqueta invalida para o item &1.", tt_etiqueta.it_codigo), 1).
 
-        IF tt_etiqueta.qtd_etiquetas < 1 OR tt_etiqueta.qtd_etiquetas > {&MAXIMO-ETIQUETAS} THEN
+        IF tt_etiqueta.qtd_etiquetas < 2 OR tt_etiqueta.qtd_etiquetas > {&MAXIMO-ETIQUETAS} THEN
             UNDO, THROW NEW Progress.Lang.AppError(
-                SUBSTITUTE("Numero de etiquetas do item &1 deve ficar entre 1 e &2.",
+                SUBSTITUTE("Numero de etiquetas do item &1 deve ficar entre 2 e &2.",
                            tt_etiqueta.it_codigo, {&MAXIMO-ETIQUETAS}), 1).
+
+        /* O modelo imprime 2 etiquetas por folha: impar sairia com uma a mais. */
+        IF tt_etiqueta.qtd_etiquetas MODULO 2 <> 0 THEN
+            UNDO, THROW NEW Progress.Lang.AppError(
+                SUBSTITUTE("Numero de etiquetas do item &1 deve ser par.", tt_etiqueta.it_codigo), 1).
     END.
 END PROCEDURE.
