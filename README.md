@@ -37,7 +37,7 @@ Base: `/api/cpp/v1/api_imprime_etiqueta/` — todas `POST`, erros de negócio em
 
 | Rota | Payload | Retorno |
 |---|---|---|
-| `pedidos/` | — (só pedidos em aberto com item pendente) | `tt_pedido` |
+| `pedidos/` | `busca`, `pagina`, `tamanho` (sem busca: pedidos das OPs abertas com reserva pendente; com busca: qualquer pedido em aberto com item pendente; por entrega) | `tt_pedido`, `tt_pagina.tem_mais` |
 | `pedido/` | `nr_pedido` | `tt_pedido`, `tt_ordem` |
 | `ordem/` | `nr_pedido`, `nr_ord_prod` (0 = itens sem ordem) | `tt_ordem`, `tt_item` |
 | `impressoras/` | — | `tt_impressora` (impressoras de etiqueta ativas do Cadastro de Impressoras) |
@@ -71,7 +71,7 @@ npm run build      # build de produção em HTML/dist/imprime-etiqueta
 
 1. **Compilação** dos três `.p` sem erro (confirmar nomes de campos: `ord-prod.nr-ord-produ`,
    `reservas.quant-orig/quant-atend`, `es-ped-item-separ.qt-separada`).
-2. **`pedidos/`**: traz só pedidos com item pendente? Medir o tempo de resposta - sem filtro de data ele percorre todos os pedidos em aberto.
+2. **`pedidos/`**: traz só pedidos com item pendente, 20 por página? Medir o tempo da 1ª página e de uma busca pelo pedido do cliente.
 3. **`pedido/` e `ordem/`** de um pedido conferido na mão: ordens, itens e pendentes batem com a ESFT4006?
    Conferir se faz sentido ignorar subconjuntos com OP própria e as linhas `6,23,24,33,34`.
 4. **`impressoras/`** traz só as impressoras de **etiqueta ativas** do Cadastro de Impressoras (`cdp/api_cadastro_impressoraRP.p` precisa estar compilado no mesmo servidor).

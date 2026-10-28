@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  linkedSignal,
+  signal,
+} from '@angular/core';
 import { Router } from '@angular/router';
 import {
   PoPageAction,
@@ -7,16 +14,12 @@ import {
   PoTableColumn,
   PoTableModule,
 } from '@po-ui/ng-components';
+import { map } from 'rxjs';
 
 import { telaPequena } from '../../core/layout/tela-pequena';
-import { carregar } from '../../core/state/carregar-ao-mudar';
-import { Pedido } from '../../domain/models';
+import { carregarAoMudar } from '../../core/state/carregar-ao-mudar';
+import { FiltroPedidos, Pedido } from '../../domain/models';
 import { PedidoRepository } from '../../domain/repositories/pedido.repository';
-
-const contemTexto = (pedido: Pedido, texto: string): boolean =>
-  [pedido.nrPedido, pedido.nrPedCli, pedido.nomeAbrev, pedido.codEmitente].some((campo) =>
-    String(campo).toLowerCase().includes(texto),
-  );
 
 @Component({
   selector: 'app-pedidos-page',
@@ -29,39 +32,57 @@ export class PedidosPage {
   private readonly repository = inject(PedidoRepository);
   private readonly pequena = telaPequena();
 
-  private readonly busca = signal('');
-  private readonly carregamento = carregar(() => this.repository.listarPedidos());
-  protected readonly carregando = this.carregamento.carregando;
+  private readonly filtro = signal<FiltroPedidos>({ busca: '', pagina: 1 });
+  private readonly carregamento = carregarAoMudar(this.filtro, (filtro) =>
+    this.repository.listarPedidos(filtro).pipe(map((pagina) => ({ filtro, ...pagina }))),
+  );
 
-  protected readonly pedidos = computed(() => {
-    const texto = this.busca().trim().toLowerCase();
-    const pedidos = this.carregamento.dados() ?? [];
-    return texto ? pedidos.filter((pedido) => contemTexto(pedido, texto)) : pedidos;
+  /** Página 1 substitui a lista; as seguintes ("Carregar mais") são acrescentadas. */
+  protected readonly pedidos = linkedSignal({
+    source: this.carregamento.dados,
+    computation: (resultado, anterior?: { value: Pedido[] }): Pedido[] => {
+      if (!resultado) return [];
+      if (resultado.filtro.pagina === 1) return resultado.pedidos;
+      return [...(anterior?.value ?? []), ...resultado.pedidos];
+    },
   });
 
+  protected readonly temMais = computed(() => this.carregamento.dados()?.temMais ?? false);
+  protected readonly carregandoPrimeiraPagina = computed(
+    () => this.carregamento.carregando() && this.filtro().pagina === 1,
+  );
+  protected readonly carregandoMais = computed(
+    () => this.carregamento.carregando() && this.filtro().pagina > 1,
+  );
+
   protected readonly pesquisa: PoPageFilter = {
-    placeholder: 'Pedido ou cliente',
-    action: (texto: string) => this.busca.set(texto ?? ''),
+    placeholder: 'Pedido do cliente, pedido ou cliente',
+    action: (texto: string) => this.filtro.set({ busca: (texto ?? '').trim(), pagina: 1 }),
   };
 
   protected readonly acoesPagina: PoPageAction[] = [
-    { label: 'Atualizar', action: () => this.carregamento.recarregar() },
+    { label: 'Atualizar', action: () => this.filtro.set({ ...this.filtro(), pagina: 1 }) },
   ];
 
   protected readonly colunas = computed<PoTableColumn[]>(() => [
     {
-      property: 'nrPedido',
-      label: 'Pedido',
+      property: 'nrPedCli',
+      label: 'Pedido cliente',
       type: 'link',
-      width: this.pequena() ? undefined : '100px',
-      action: (_: number, pedido: Pedido) => this.abrir(pedido),
+      action: (_: string, pedido: Pedido) => this.abrir(pedido),
     },
+    { property: 'nrPedido', label: 'Pedido', width: '100px', visible: !this.pequena() },
     { property: 'nomeAbrev', label: 'Cliente' },
-    { property: 'nrPedCli', label: 'Pedido cliente', visible: !this.pequena() },
     { property: 'dataEntrega', label: 'Entrega', type: 'date', visible: !this.pequena() },
     { property: 'qtdOrdens', label: 'Ordens', type: 'number', visible: !this.pequena() },
     { property: 'qtdItensPendentes', label: 'Pendentes', type: 'number' },
   ]);
+
+  /** Parte da última página recebida: se "Carregar mais" falhar, tentar de novo pede a mesma. */
+  protected carregarMais(): void {
+    const ultimo = this.carregamento.dados()?.filtro;
+    if (ultimo) this.filtro.set({ ...ultimo, pagina: ultimo.pagina + 1 });
+  }
 
   private abrir(pedido: Pedido): void {
     this.router.navigate(['/pedidos', pedido.nrPedido]);

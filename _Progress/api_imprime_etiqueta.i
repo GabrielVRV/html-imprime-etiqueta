@@ -53,6 +53,10 @@ DEFINE TEMP-TABLE tt_etiqueta NO-UNDO
     FIELD quantidade    AS DECIMAL
     FIELD qtd_etiquetas AS INTEGER.
 
+/* tem_mais = existe pelo menos mais uma pagina de pedidos */
+DEFINE TEMP-TABLE tt_pagina NO-UNDO
+    FIELD tem_mais AS LOGICAL.
+
 DEFINE TEMP-TABLE tt_resultado NO-UNDO
     FIELD qtd_folhas AS INTEGER.
 

@@ -46,6 +46,7 @@ export interface EtiquetaDto {
 
 export interface ListarPedidosResposta extends RespostaTotvs {
   tt_pedido?: PedidoDto[];
+  tt_pagina?: { tem_mais: boolean }[];
 }
 
 export interface ObterPedidoResposta extends RespostaTotvs {

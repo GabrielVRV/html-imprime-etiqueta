@@ -3,7 +3,13 @@ import { map, Observable } from 'rxjs';
 
 import { ApiError } from '../../core/api/api-error';
 import { TotvsApiClient } from '../../core/api/totvs-api.client';
-import { OrdemDetalhe, Pedido, PedidoDetalhe } from '../../domain/models';
+import {
+  FiltroPedidos,
+  OrdemDetalhe,
+  PaginaPedidos,
+  PedidoDetalhe,
+  TAMANHO_PAGINA_PEDIDOS,
+} from '../../domain/models';
 import { PedidoRepository } from '../../domain/repositories/pedido.repository';
 import { ListarPedidosResposta, ObterOrdemResposta, ObterPedidoResposta } from './dtos';
 import { toItemSeparacao, toOrdem, toPedido } from './mappers';
@@ -12,10 +18,19 @@ import { toItemSeparacao, toOrdem, toPedido } from './mappers';
 export class PedidoHttpRepository extends PedidoRepository {
   private readonly api = inject(TotvsApiClient);
 
-  listarPedidos(): Observable<Pedido[]> {
+  listarPedidos(filtro: FiltroPedidos): Observable<PaginaPedidos> {
     return this.api
-      .post<ListarPedidosResposta>('pedidos/')
-      .pipe(map((resposta) => (resposta.tt_pedido ?? []).map(toPedido)));
+      .post<ListarPedidosResposta>('pedidos/', {
+        busca: filtro.busca,
+        pagina: filtro.pagina,
+        tamanho: TAMANHO_PAGINA_PEDIDOS,
+      })
+      .pipe(
+        map((resposta) => ({
+          pedidos: (resposta.tt_pedido ?? []).map(toPedido),
+          temMais: resposta.tt_pagina?.[0]?.tem_mais ?? false,
+        })),
+      );
   }
 
   obterPedido(nrPedido: number): Observable<PedidoDetalhe> {

@@ -15,3 +15,17 @@ export interface Pedido {
 export interface PedidoDetalhe extends Pedido {
   ordens: Ordem[];
 }
+
+export const TAMANHO_PAGINA_PEDIDOS = 20;
+
+export interface FiltroPedidos {
+  /** Pedido do cliente ou cliente (começando pelo texto), ou número exato do pedido. */
+  busca: string;
+  /** Começa em 1. */
+  pagina: number;
+}
+
+export interface PaginaPedidos {
+  pedidos: Pedido[];
+  temMais: boolean;
+}

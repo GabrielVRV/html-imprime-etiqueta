@@ -20,8 +20,22 @@ BLOCK-LEVEL ON ERROR UNDO, THROW.
 &GLOBAL-DEFINE LINHAS-VALIDAS "6,23,24,33,34"
 &GLOBAL-DEFINE MAXIMO-ETIQUETAS 998
 &GLOBAL-DEFINE ESTADOS-ORDEM "Nao Iniciada,Liberada,Alocada,Separada,Requisitada,Iniciada,Finalizada,Terminada"
+/* Ordem aberta = estado 1 a 6 de {&ESTADOS-ORDEM} (fora Finalizada e Terminada) */
+&GLOBAL-DEFINE ULTIMO-ESTADO-ORDEM-ABERTA 6
 /* Valor de {&TIPO-IMPRESSORA-ETIQUETA} em cdp/api_cadastro_impressora.i */
 &GLOBAL-DEFINE TIPO-IMPRESSORA-ETIQUETA 1
+&GLOBAL-DEFINE MAXIMO-POR-PAGINA 50
+/* 1 Aberto, 2 Atendido Parcial, 4 Pendente (este so' com saldo em aberto).
+   Fora: 3 Atendido Total, 5 Suspenso, 6 Cancelado. */
+&GLOBAL-DEFINE SITUACOES-ABERTAS "1,2,4"
+
+/* Pedidos em aberto (e da busca) ainda sem saber se tem pendencia, na
+   ordem da lista. A chave e' nr-pedido: ROWID nao pode ser indexado. */
+DEFINE TEMP-TABLE tt-candidato NO-UNDO
+    FIELD nr-pedido  AS INTEGER
+    FIELD dt-entrega AS DATE
+    INDEX idx-pedido IS UNIQUE nr-pedido
+    INDEX idx-entrega IS PRIMARY dt-entrega nr-pedido.
 
 
 /* ---------------------------------------------------------
@@ -30,22 +44,127 @@ BLOCK-LEVEL ON ERROR UNDO, THROW.
 
 /* Lista so o que a separacao precisa: pedidos em aberto com pelo menos
    um item pendente. Situacao igual ao Pedidos Sequenciados: fora
-   atendidos totalmente, suspensos, cancelados e pendentes sem saldo. */
+   atendidos totalmente, suspensos, cancelados e pendentes sem saldo.
+
+   Saber se o pedido tem pendencia e' caro (monta ordens e reservas), por
+   isso a lista e' paginada e para assim que completa a pagina. A busca
+   filtra antes dessa montagem: pedido do cliente ou cliente comecando
+   pelo texto, ou o numero exato do pedido. */
 PROCEDURE pi-listar-pedidos:
+    DEFINE INPUT  PARAMETER pBusca   AS CHARACTER NO-UNDO.
+    DEFINE INPUT  PARAMETER pPagina  AS INTEGER   NO-UNDO.
+    DEFINE INPUT  PARAMETER pTamanho AS INTEGER   NO-UNDO.
     DEFINE OUTPUT PARAMETER TABLE FOR tt_pedido.
+    DEFINE OUTPUT PARAMETER pTemMais AS LOGICAL   NO-UNDO.
+
+    DEFINE VARIABLE iPular    AS INTEGER NO-UNDO.
+    DEFINE VARIABLE iNaPagina AS INTEGER NO-UNDO.
 
     EMPTY TEMP-TABLE tt_pedido.
 
-    FOR EACH ped-venda NO-LOCK
-       WHERE ped-venda.cod-sit-ped <> 3
-         AND ped-venda.cod-sit-ped <> 5
-         AND ped-venda.cod-sit-ped <> 6
-         AND (ped-venda.cod-sit-ped <> 4 OR ped-venda.vl-liq-abe > 0):
+    IF pPagina < 1 THEN
+        pPagina = 1.
+    IF pTamanho < 1 OR pTamanho > {&MAXIMO-POR-PAGINA} THEN
+        pTamanho = {&MAXIMO-POR-PAGINA}.
+
+    iPular = (pPagina - 1) * pTamanho.
+
+    RUN pi-coleta-candidatos (INPUT TRIM(pBusca)).
+
+    FOR EACH tt-candidato USE-INDEX idx-entrega,
+        FIRST ped-venda NO-LOCK
+        WHERE ped-venda.nr-pedido = tt-candidato.nr-pedido:
 
         RUN pi-monta-pedido (BUFFER ped-venda).
-        IF CAN-FIND(FIRST tt_item WHERE tt_item.quant_pendente > 0) THEN
-            RUN pi-cria-tt-pedido (BUFFER ped-venda).
+        IF NOT CAN-FIND(FIRST tt_item WHERE tt_item.quant_pendente > 0) THEN NEXT.
+
+        IF iPular > 0 THEN DO:
+            iPular = iPular - 1.
+            NEXT.
+        END.
+
+        IF iNaPagina = pTamanho THEN DO:
+            pTemMais = YES.
+            LEAVE.
+        END.
+
+        RUN pi-cria-tt-pedido (BUFFER ped-venda).
+        iNaPagina = iNaPagina + 1.
     END.
+END PROCEDURE.
+
+
+/* Cada leitura usa um indice proprio: com "<>" ou com OR entre os
+   criterios o Progress lia a tabela inteira (WHOLE-INDEX).
+
+   Sem busca, a lista parte das ordens abertas com reserva pendente, e
+   nao dos pedidos: de ~7 mil pedidos em aberto so' uma fracao minima tem
+   pendencia, e descobrir isso montando pedido por pedido levava minutos.
+   Pedido cujo unico pendente e' item sem ordem nao entra nessa lista -
+   ele continua sendo achado pela busca. */
+PROCEDURE pi-coleta-candidatos PRIVATE:
+    DEFINE INPUT PARAMETER pBusca AS CHARACTER NO-UNDO.
+
+    DEFINE VARIABLE iEstado   AS INTEGER NO-UNDO.
+    DEFINE VARIABLE iNrPedido AS INTEGER NO-UNDO.
+
+    EMPTY TEMP-TABLE tt-candidato.
+
+    IF pBusca = "" THEN DO:
+        /* indice estado (estado) da ord-prod; reservas pelo indice codigo
+           (nr-ord-produ, it-codigo); pedido pelo ch-pedido (nome-abrev, nr-pedcli) */
+        DO iEstado = 1 TO {&ULTIMO-ESTADO-ORDEM-ABERTA}:
+            FOR EACH ord-prod NO-LOCK
+               WHERE ord-prod.estado = iEstado:
+
+                IF ord-prod.nr-pedido = "" THEN NEXT.
+                IF LOOKUP(STRING(ord-prod.nr-linha), {&LINHAS-VALIDAS}) = 0 THEN NEXT.
+                IF NOT CAN-FIND(FIRST reservas
+                                WHERE reservas.nr-ord-produ = ord-prod.nr-ord-produ
+                                  AND reservas.quant-orig   > reservas.quant-atend) THEN NEXT.
+
+                FIND ped-venda NO-LOCK
+                    WHERE ped-venda.nome-abrev = ord-prod.nome-abrev
+                      AND ped-venda.nr-pedcli  = ord-prod.nr-pedido NO-ERROR.
+                IF AVAILABLE ped-venda THEN
+                    RUN pi-adiciona-candidato (BUFFER ped-venda).
+            END.
+        END.
+        RETURN.
+    END.
+
+    /* indice ch-nr-pedcli (nr-pedcli, nome-abrev) */
+    FOR EACH ped-venda NO-LOCK
+       WHERE ped-venda.nr-pedcli BEGINS pBusca:
+        RUN pi-adiciona-candidato (BUFFER ped-venda).
+    END.
+
+    /* indice ch-pedido (nome-abrev, nr-pedcli) */
+    FOR EACH ped-venda NO-LOCK
+       WHERE ped-venda.nome-abrev BEGINS pBusca:
+        RUN pi-adiciona-candidato (BUFFER ped-venda).
+    END.
+
+    /* indice ch-pedseq (nr-pedido) */
+    ASSIGN iNrPedido = INTEGER(pBusca) NO-ERROR.
+    IF iNrPedido > 0 THEN
+        FOR FIRST ped-venda NO-LOCK
+            WHERE ped-venda.nr-pedido = iNrPedido:
+            RUN pi-adiciona-candidato (BUFFER ped-venda).
+        END.
+END PROCEDURE.
+
+
+PROCEDURE pi-adiciona-candidato PRIVATE:
+    DEFINE PARAMETER BUFFER pPedVenda FOR ped-venda.
+
+    IF LOOKUP(STRING(pPedVenda.cod-sit-ped), {&SITUACOES-ABERTAS}) = 0 THEN RETURN.
+    IF pPedVenda.cod-sit-ped = 4 AND (pPedVenda.vl-liq-abe = ? OR pPedVenda.vl-liq-abe <= 0) THEN RETURN.
+    IF CAN-FIND(tt-candidato WHERE tt-candidato.nr-pedido = pPedVenda.nr-pedido) THEN RETURN.
+
+    CREATE tt-candidato.
+    ASSIGN tt-candidato.nr-pedido  = pPedVenda.nr-pedido
+           tt-candidato.dt-entrega = pPedVenda.dt-entrega.
 END PROCEDURE.
 
 

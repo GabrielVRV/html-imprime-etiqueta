@@ -3,10 +3,13 @@
     <po-table
       [p-columns]="colunas()"
       [p-items]="pedidos()"
-      [p-loading]="carregando()"
+      [p-loading]="carregandoPrimeiraPagina()"
+      [p-loading-show-more]="carregandoMais()"
+      [p-show-more-disabled]="!temMais()"
       [p-hide-columns-manager]="true"
       [p-text-wrap]="true"
-      [p-literals]="{ noData: 'Nenhum pedido com itens pendentes' }"
+      [p-literals]="{ noData: 'Nenhum pedido com itens pendentes', loadMoreData: 'Carregar mais' }"
+      (p-show-more)="carregarMais()"
     />
   </section>
 </po-page-list>

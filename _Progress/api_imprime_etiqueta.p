@@ -29,11 +29,29 @@ PROCEDURE pi-pedidos:
     DEFINE OUTPUT PARAMETER jsonOutput AS Progress.Json.ObjectModel.JsonObject NO-UNDO.
 
     DEFINE VARIABLE oPayload AS Progress.Json.ObjectModel.JsonObject NO-UNDO.
+    DEFINE VARIABLE cBusca   AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE iPagina  AS INTEGER   NO-UNDO.
+    DEFINE VARIABLE iTamanho AS INTEGER   NO-UNDO.
+    DEFINE VARIABLE lTemMais AS LOGICAL   NO-UNDO.
 
     RUN pi-inicia (INPUT jsonInput, OUTPUT jsonOutput, OUTPUT oPayload).
 
-    RUN pi-listar-pedidos IN hRegras (OUTPUT TABLE tt_pedido).
+    IF oPayload:Has("busca")   THEN cBusca   = oPayload:GetCharacter("busca").
+    IF oPayload:Has("pagina")  THEN iPagina  = oPayload:GetInteger("pagina").
+    IF oPayload:Has("tamanho") THEN iTamanho = oPayload:GetInteger("tamanho").
+
+    RUN pi-listar-pedidos IN hRegras (INPUT  cBusca,
+                                       INPUT  iPagina,
+                                       INPUT  iTamanho,
+                                       OUTPUT TABLE tt_pedido,
+                                       OUTPUT lTemMais).
+
+    EMPTY TEMP-TABLE tt_pagina.
+    CREATE tt_pagina.
+    tt_pagina.tem_mais = lTemMais.
+
     RUN pi-adiciona-tabela (jsonOutput, TEMP-TABLE tt_pedido:HANDLE).
+    RUN pi-adiciona-tabela (jsonOutput, TEMP-TABLE tt_pagina:HANDLE).
 
     CATCH eErro AS Progress.Lang.Error:
         RUN pi-registra-erro (eErro).
