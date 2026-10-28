@@ -27,14 +27,13 @@ import {
   PoNotificationService,
   PoSelectOption,
 } from '@po-ui/ng-components';
-import { finalize, map, startWith } from 'rxjs';
+import { finalize, map } from 'rxjs';
 
 import { PreferenciasService } from '../../core/preferencias/preferencias.service';
 import { EtiquetaSolicitada, ItemSeparacao } from '../../domain/models';
 import { ImpressaoRepository } from '../../domain/repositories/impressao.repository';
 import {
   ETIQUETAS_POR_FOLHA,
-  folhasNecessarias,
   quantidadeEtiquetasValida,
   sugerirEtiqueta,
 } from '../../domain/rules/etiqueta.rules';
@@ -83,22 +82,6 @@ export class ImpressaoModalComponent {
     this.form.statusChanges.pipe(map((status) => status === 'VALID')),
     { initialValue: false },
   );
-  private readonly valores = toSignal(
-    this.form.valueChanges.pipe(
-      startWith(this.form.getRawValue()),
-      map(() => this.form.getRawValue()),
-    ),
-    { requireSync: true },
-  );
-
-  protected readonly resumo = computed(() => {
-    const quantidades = this.valores().etiquetas.map((e) => e.quantidadeEtiquetas || 0);
-    return {
-      folhas: quantidades.reduce((total, qtd) => total + folhasNecessarias(qtd), 0),
-      etiquetas: quantidades.reduce((total, qtd) => total + qtd, 0),
-    };
-  });
-
   protected readonly acaoImprimir = computed<PoModalAction>(() => ({
     label: 'Enviar para impressão',
     action: () => this.imprimir(),
