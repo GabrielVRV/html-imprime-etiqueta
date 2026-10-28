@@ -1,5 +1,6 @@
 import {
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   computed,
   DestroyRef,
@@ -61,6 +62,7 @@ export class ImpressaoModalComponent {
   private readonly notification = inject(PoNotificationService);
   private readonly preferencias = inject(PreferenciasService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly changeDetector = inject(ChangeDetectorRef);
   private readonly modal = viewChild.required(PoModalComponent);
 
   readonly itens = input.required<ItemSeparacao[]>();
@@ -125,6 +127,9 @@ export class ImpressaoModalComponent {
       .forEach((sugestao) => this.etiquetas.push(this.criarLinha(sugestao), { emitEvent: false }));
     this.form.updateValueAndValidity();
     this.modal().open();
+    // abrir() é chamado pela página: sem isso este componente OnPush não é
+    // checado e o po-modal só aparecia na próxima mudança de input.
+    this.changeDetector.markForCheck();
   }
 
   private criarLinha(sugestao: EtiquetaSolicitada): EtiquetaForm {
