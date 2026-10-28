@@ -6,9 +6,9 @@ import { folhasNecessarias } from '../../domain/rules/etiqueta.rules';
 import { ImpressaoRepository } from '../../domain/repositories/impressao.repository';
 
 const IMPRESSORAS_MOCK: Impressora[] = [
-  { area: 'Almoxarifado', endereco: '\\\\srv-print\\zebra-almox' },
-  { area: 'Expedição', endereco: '\\\\srv-print\\zebra-exp' },
-  { area: 'Montagem', endereco: '\\\\srv-print\\zebra-mont' },
+  { nome: 'Zebra Almoxarifado', caminho: '\\\\srv-print\\zebra-almox' },
+  { nome: 'Zebra Expedição', caminho: '\\\\srv-print\\zebra-exp' },
+  { nome: 'Zebra Montagem', caminho: '\\\\srv-print\\zebra-mont' },
 ];
 
 @Injectable()

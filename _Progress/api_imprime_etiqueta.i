@@ -40,9 +40,12 @@ DEFINE TEMP-TABLE tt_item NO-UNDO
     FIELD quant_pendente AS DECIMAL
     INDEX idx-item IS PRIMARY UNIQUE nr_ord_prod it_codigo.
 
+/* Copiada por nome de campo da tt_impressora do Cadastro de Impressoras
+   (cdp/api_cadastro_impressora.i) - so' os campos que a tela usa. */
 DEFINE TEMP-TABLE tt_impressora NO-UNDO
-    FIELD area     AS CHARACTER
-    FIELD endereco AS CHARACTER.
+    FIELD nome    AS CHARACTER
+    FIELD caminho AS CHARACTER
+    INDEX idx-nome nome.
 
 DEFINE TEMP-TABLE tt_etiqueta NO-UNDO
     FIELD it_codigo     AS CHARACTER

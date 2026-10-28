@@ -13,9 +13,9 @@ export class PreferenciasService {
     }
   }
 
-  set ultimaImpressora(endereco: string) {
+  set ultimaImpressora(caminho: string) {
     try {
-      localStorage.setItem(CHAVE_IMPRESSORA, endereco);
+      localStorage.setItem(CHAVE_IMPRESSORA, caminho);
     } catch {
       // storage bloqueado (modo privado, política do navegador): só não lembra a escolha
     }

@@ -20,6 +20,8 @@ BLOCK-LEVEL ON ERROR UNDO, THROW.
 &GLOBAL-DEFINE LINHAS-VALIDAS "6,23,24,33,34"
 &GLOBAL-DEFINE MAXIMO-ETIQUETAS 998
 &GLOBAL-DEFINE ESTADOS-ORDEM "Nao Iniciada,Liberada,Alocada,Separada,Requisitada,Iniciada,Finalizada,Terminada"
+/* Valor de {&TIPO-IMPRESSORA-ETIQUETA} em cdp/api_cadastro_impressora.i */
+&GLOBAL-DEFINE TIPO-IMPRESSORA-ETIQUETA 1
 
 
 /* ---------------------------------------------------------
@@ -88,16 +90,45 @@ PROCEDURE pi-obter-ordem:
 END PROCEDURE.
 
 
+/* Impressoras de etiqueta ativas do Cadastro de Impressoras (es-impressora).
+   Recebe a tabela por TABLE-HANDLE e copia por nome de campo (BUFFER-COPY):
+   com TABLE a estrutura teria que ser identica a do cadastro (erro 5363
+   quando diverge), e aqui so' interessam nome e caminho. */
 PROCEDURE pi-listar-impressoras:
     DEFINE OUTPUT PARAMETER TABLE FOR tt_impressora.
 
+    DEFINE VARIABLE hCadastro AS HANDLE NO-UNDO.
+    DEFINE VARIABLE hTabela   AS HANDLE NO-UNDO.
+    DEFINE VARIABLE hBuffer   AS HANDLE NO-UNDO.
+    DEFINE VARIABLE hQuery    AS HANDLE NO-UNDO.
+
     EMPTY TEMP-TABLE tt_impressora.
 
-    FOR EACH impressoras-etiqueta NO-LOCK:
+    RUN cdp/api_cadastro_impressoraRP.p PERSISTENT SET hCadastro.
+    RUN pi-listar-impressoras-ativas IN hCadastro (INPUT  {&TIPO-IMPRESSORA-ETIQUETA},
+                                                   OUTPUT TABLE-HANDLE hTabela).
+
+    hBuffer = hTabela:DEFAULT-BUFFER-HANDLE.
+    CREATE QUERY hQuery.
+    hQuery:SET-BUFFERS(hBuffer).
+    hQuery:QUERY-PREPARE(SUBSTITUTE("FOR EACH &1 NO-LOCK", hBuffer:NAME)).
+    hQuery:QUERY-OPEN().
+
+    DO WHILE hQuery:GET-NEXT():
         CREATE tt_impressora.
-        ASSIGN tt_impressora.area     = impressoras-etiqueta.area
-               tt_impressora.endereco = impressoras-etiqueta.endereco.
+        BUFFER tt_impressora:BUFFER-COPY(hBuffer).
     END.
+
+    FINALLY:
+        IF VALID-HANDLE(hQuery) THEN DO:
+            hQuery:QUERY-CLOSE().
+            DELETE OBJECT hQuery.
+        END.
+        IF VALID-HANDLE(hTabela) THEN
+            DELETE OBJECT hTabela.
+        IF VALID-HANDLE(hCadastro) THEN
+            DELETE PROCEDURE hCadastro.
+    END FINALLY.
 END PROCEDURE.
 
 
@@ -307,11 +338,17 @@ END PROCEDURE.
 PROCEDURE pi-valida-impressao PRIVATE:
     DEFINE INPUT PARAMETER pImpressora AS CHARACTER NO-UNDO.
 
+    DEFINE VARIABLE hCadastro AS HANDLE  NO-UNDO.
+    DEFINE VARIABLE lValida   AS LOGICAL NO-UNDO.
+
     /* O destino vira um caminho de arquivo no servidor do robo: so'
-       aceita impressoras cadastradas, nunca um caminho livre. */
-    IF NOT CAN-FIND(FIRST impressoras-etiqueta
-                    WHERE impressoras-etiqueta.endereco = pImpressora) THEN
-        UNDO, THROW NEW Progress.Lang.AppError("Impressora nao cadastrada em impressoras-etiqueta.", 1).
+       aceita impressora de etiqueta cadastrada e ativa, nunca um caminho livre. */
+    RUN cdp/api_cadastro_impressoraRP.p PERSISTENT SET hCadastro.
+    RUN pi-impressora-valida IN hCadastro (INPUT  pImpressora,
+                                           INPUT  {&TIPO-IMPRESSORA-ETIQUETA},
+                                           OUTPUT lValida).
+    IF NOT lValida THEN
+        UNDO, THROW NEW Progress.Lang.AppError("Impressora nao cadastrada ou inativa no Cadastro de Impressoras.", 1).
 
     IF NOT CAN-FIND(FIRST tt_etiqueta) THEN
         UNDO, THROW NEW Progress.Lang.AppError("Nenhuma etiqueta informada.", 1).
@@ -331,4 +368,9 @@ PROCEDURE pi-valida-impressao PRIVATE:
             UNDO, THROW NEW Progress.Lang.AppError(
                 SUBSTITUTE("Numero de etiquetas do item &1 deve ser par.", tt_etiqueta.it_codigo), 1).
     END.
+
+    FINALLY:
+        IF VALID-HANDLE(hCadastro) THEN
+            DELETE PROCEDURE hCadastro.
+    END FINALLY.
 END PROCEDURE.

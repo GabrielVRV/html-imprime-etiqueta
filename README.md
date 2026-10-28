@@ -40,7 +40,7 @@ Base: `/api/cpp/v1/api_imprime_etiqueta/` — todas `POST`, erros de negócio em
 | `pedidos/` | — (só pedidos em aberto com item pendente) | `tt_pedido` |
 | `pedido/` | `nr_pedido` | `tt_pedido`, `tt_ordem` |
 | `ordem/` | `nr_pedido`, `nr_ord_prod` (0 = itens sem ordem) | `tt_ordem`, `tt_item` |
-| `impressoras/` | — | `tt_impressora` |
+| `impressoras/` | — | `tt_impressora` (impressoras de etiqueta ativas do Cadastro de Impressoras) |
 | `imprimir/` | `impressora`, `lote`, `serie`, `tt_etiqueta[]` | `tt_resultado.qtd_folhas` |
 
 A impressão não fala com a impressora: grava uma folha (2 etiquetas) por registro em
@@ -70,15 +70,15 @@ npm run build      # build de produção em HTML/dist/imprime-etiqueta
 ## Roteiro de testes no servidor
 
 1. **Compilação** dos três `.p` sem erro (confirmar nomes de campos: `ord-prod.nr-ord-produ`,
-   `reservas.quant-orig/quant-atend`, `es-ped-item-separ.qt-separada`, `impressoras-etiqueta.area/endereco`).
+   `reservas.quant-orig/quant-atend`, `es-ped-item-separ.qt-separada`).
 2. **`pedidos/`**: traz só pedidos com item pendente? Medir o tempo de resposta - sem filtro de data ele percorre todos os pedidos em aberto.
 3. **`pedido/` e `ordem/`** de um pedido conferido na mão: ordens, itens e pendentes batem com a ESFT4006?
    Conferir se faz sentido ignorar subconjuntos com OP própria e as linhas `6,23,24,33,34`.
-4. **`impressoras/`** traz a mesma lista do combo da ESCP1001.
+4. **`impressoras/`** traz só as impressoras de **etiqueta ativas** do Cadastro de Impressoras (`cdp/api_cadastro_impressoraRP.p` precisa estar compilado no mesmo servidor).
 5. **PROPATH**: a API encontra `etiquetas/ITEM-CASP.prn` (senão o erro diz isso).
 6. **Formato decimal**: imprimir quantidade 15,5 e 0,5 → etiqueta e código de barras com `15,5` e `0,5`.
 7. **Etiqueta idêntica**: imprimir o mesmo item pela ESCP1001 e pela tela nova e comparar
    (o original gravava com `EXPORT`, que põe aspas; o robô usa `PUT CONTROL`, sem aspas).
 8. **Acentos** na descrição saem corretos (o robô converte UTF-8 → ISO8859-1).
 9. **Transação**: pedir impressão com um item inexistente junto de um válido → nada entra na fila.
-10. **Impressora não cadastrada** no payload é recusada.
+10. **Impressora não cadastrada, inativa ou de outro tipo** no payload é recusada.

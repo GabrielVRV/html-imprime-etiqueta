@@ -121,7 +121,7 @@ export class ImpressaoModalComponent {
       .subscribe({
         next: (impressoras) => {
           this.opcoesImpressora.set(
-            impressoras.map(({ area, endereco }) => ({ label: area, value: endereco })),
+            impressoras.map(({ nome, caminho }) => ({ label: nome, value: caminho })),
           );
           this.selecionarImpressoraPadrao();
         },
@@ -158,9 +158,9 @@ export class ImpressaoModalComponent {
   }
 
   private selecionarImpressoraPadrao(): void {
-    const enderecos = this.opcoesImpressora().map((opcao) => opcao.value);
+    const caminhos = this.opcoesImpressora().map((opcao) => opcao.value);
     const ultima = this.preferencias.ultimaImpressora;
-    const padrao = ultima && enderecos.includes(ultima) ? ultima : enderecos[0];
+    const padrao = ultima && caminhos.includes(ultima) ? ultima : caminhos[0];
     if (padrao) this.form.controls.impressora.setValue(String(padrao));
   }
 

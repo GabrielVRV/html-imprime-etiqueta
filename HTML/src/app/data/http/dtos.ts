@@ -33,8 +33,8 @@ export interface ItemDto {
 }
 
 export interface ImpressoraDto {
-  area: string;
-  endereco: string;
+  nome: string;
+  caminho: string;
 }
 
 export interface EtiquetaDto {

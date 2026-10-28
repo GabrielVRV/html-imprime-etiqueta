@@ -33,8 +33,8 @@ export const toItemSeparacao = (dto: ItemDto): ItemSeparacao => ({
 });
 
 export const toImpressora = (dto: ImpressoraDto): Impressora => ({
-  area: dto.area,
-  endereco: dto.endereco,
+  nome: dto.nome,
+  caminho: dto.caminho,
 });
 
 export const toEtiquetaDto = (etiqueta: EtiquetaSolicitada): EtiquetaDto => ({

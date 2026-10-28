@@ -1,6 +1,8 @@
+/** Impressora de etiqueta ativa do Cadastro de Impressoras. */
 export interface Impressora {
-  area: string;
-  endereco: string;
+  nome: string;
+  /** Destino gravado na fila do roboEtiqueta. */
+  caminho: string;
 }
 
 export interface EtiquetaSolicitada {
