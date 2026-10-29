@@ -28,6 +28,14 @@ BLOCK-LEVEL ON ERROR UNDO, THROW.
 /* 1 Aberto, 2 Atendido Parcial, 4 Pendente (este so' com saldo em aberto).
    Fora: 3 Atendido Total, 5 Suspenso, 6 Cancelado. */
 &GLOBAL-DEFINE SITUACOES-ABERTAS "1,2,4"
+/* Saldo do item mostrado na separacao: fora o que ja' esta' separado
+   (localizacoes de separacao e reserva) e os depositos que nao servem para separar.
+   O deposito PRP so' conta para pedido PRP (pi-usa-deposito-prp). */
+&GLOBAL-DEFINE DEPOSITOS-FORA-SALDO "CON,RET,CQ"
+&GLOBAL-DEFINE LOCALIZACOES-FORA-SALDO "separacao_prp,separacao_ordem,reserva_ordem"
+&GLOBAL-DEFINE ESTABELECIMENTO-SALDO "1"
+&GLOBAL-DEFINE DEPOSITO-PRP "PRP"
+&GLOBAL-DEFINE TIPOS-PEDIDO-PRP "01,02,03,04,05,20,21,22,23,24,25,26,28,29,42,43,44,45,46,77,87,88"
 
 /* Pedidos em aberto (e da busca) ainda sem saber se tem pendencia, na
    ordem da lista. A chave e' nr-pedido: ROWID nao pode ser indexado. */
@@ -190,6 +198,8 @@ PROCEDURE pi-obter-ordem:
     DEFINE OUTPUT PARAMETER TABLE FOR tt_ordem.
     DEFINE OUTPUT PARAMETER TABLE FOR tt_item.
 
+    DEFINE VARIABLE lUsaPrp AS LOGICAL NO-UNDO.
+
     FIND ped-venda NO-LOCK WHERE ped-venda.nr-pedido = pNrPedido NO-ERROR.
     IF NOT AVAILABLE ped-venda THEN
         UNDO, THROW NEW Progress.Lang.AppError(SUBSTITUTE("Pedido &1 nao encontrado.", pNrPedido), 1).
@@ -205,6 +215,15 @@ PROCEDURE pi-obter-ordem:
     END.
     FOR EACH tt_item WHERE tt_item.nr_ord_prod <> pNrOrdProd:
         DELETE tt_item.
+    END.
+
+    /* So' aqui, e nao no pi-monta-pedido: a lista de pedidos nao mostra
+       saldo e ler o estoque de cada componente deixaria a lista lenta. */
+    RUN pi-usa-deposito-prp (INPUT ped-venda.tp-pedido, OUTPUT lUsaPrp).
+    FOR EACH tt_item:
+        RUN pi-calcula-saldo (INPUT  tt_item.it_codigo,
+                              INPUT  lUsaPrp,
+                              OUTPUT tt_item.quant_saldo).
     END.
 END PROCEDURE.
 
@@ -415,6 +434,35 @@ PROCEDURE pi-acumula-item PRIVATE:
     ASSIGN tt_item.quant_orig     = tt_item.quant_orig  + pQtOrig
            tt_item.quant_atend    = tt_item.quant_atend + pQtAtend
            tt_item.quant_pendente = MAXIMUM(0, tt_item.quant_orig - tt_item.quant_atend).
+END PROCEDURE.
+
+
+/* Pedido PRP pode usar o saldo do deposito PRP; os demais nao. */
+PROCEDURE pi-usa-deposito-prp PRIVATE:
+    DEFINE INPUT  PARAMETER p-tp-pedido AS CHARACTER NO-UNDO.
+    DEFINE OUTPUT PARAMETER p-usa-prp   AS LOGICAL   NO-UNDO.
+
+    p-usa-prp = LOOKUP(TRIM(p-tp-pedido), {&TIPOS-PEDIDO-PRP}) > 0.
+END PROCEDURE.
+
+
+/* Saldo atual do item no estabelecimento {&ESTABELECIMENTO-SALDO}, sem os
+   depositos e localizacoes fora do saldo. */
+PROCEDURE pi-calcula-saldo PRIVATE:
+    DEFINE INPUT  PARAMETER pItCodigo AS CHARACTER NO-UNDO.
+    DEFINE INPUT  PARAMETER pUsaPrp   AS LOGICAL   NO-UNDO.
+    DEFINE OUTPUT PARAMETER pSaldo    AS DECIMAL   NO-UNDO.
+
+    FOR EACH saldo-estoq NO-LOCK
+       WHERE saldo-estoq.it-codigo   = pItCodigo
+         AND saldo-estoq.cod-estabel = {&ESTABELECIMENTO-SALDO}:
+
+        IF LOOKUP(TRIM(saldo-estoq.cod-depos), {&DEPOSITOS-FORA-SALDO}) > 0 THEN NEXT.
+        IF LOOKUP(TRIM(saldo-estoq.cod-localiz), {&LOCALIZACOES-FORA-SALDO}) > 0 THEN NEXT.
+        IF TRIM(saldo-estoq.cod-depos) = {&DEPOSITO-PRP} AND NOT pUsaPrp THEN NEXT.
+
+        pSaldo = pSaldo + saldo-estoq.qtidade-atu.
+    END.
 END PROCEDURE.
 
 

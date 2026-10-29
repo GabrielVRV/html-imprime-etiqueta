@@ -38,6 +38,7 @@ DEFINE TEMP-TABLE tt_item NO-UNDO
     FIELD quant_orig     AS DECIMAL
     FIELD quant_atend    AS DECIMAL
     FIELD quant_pendente AS DECIMAL
+    FIELD quant_saldo    AS DECIMAL
     INDEX idx-item IS PRIMARY UNIQUE nr_ord_prod it_codigo.
 
 /* Copiada por nome de campo da tt_impressora do Cadastro de Impressoras

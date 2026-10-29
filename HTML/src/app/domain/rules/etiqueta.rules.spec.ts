@@ -14,6 +14,7 @@ const item = (quantidadePendente: number): ItemSeparacao => ({
   quantidadeNecessaria: 10,
   quantidadeAtendida: 10 - quantidadePendente,
   quantidadePendente,
+  quantidadeSaldo: 0,
 });
 
 describe('etiqueta.rules', () => {

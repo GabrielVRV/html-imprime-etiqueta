@@ -30,6 +30,7 @@ export const toItemSeparacao = (dto: ItemDto): ItemSeparacao => ({
   quantidadeNecessaria: dto.quant_orig,
   quantidadeAtendida: dto.quant_atend,
   quantidadePendente: dto.quant_pendente,
+  quantidadeSaldo: dto.quant_saldo,
 });
 
 export const toImpressora = (dto: ImpressoraDto): Impressora => ({

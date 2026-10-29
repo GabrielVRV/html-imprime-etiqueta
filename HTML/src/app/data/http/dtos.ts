@@ -30,6 +30,7 @@ export interface ItemDto {
   quant_orig: number;
   quant_atend: number;
   quant_pendente: number;
+  quant_saldo: number;
 }
 
 export interface ImpressoraDto {

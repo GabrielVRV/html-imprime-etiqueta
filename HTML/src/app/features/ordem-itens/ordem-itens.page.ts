@@ -137,6 +137,13 @@ export class OrdemItensPage {
       visible: !this.pequena(),
     },
     { property: 'quantidadePendente', label: 'Pendente', type: 'number', format: '1.0-4' },
+    {
+      property: 'quantidadeSaldo',
+      label: 'Saldo',
+      type: 'number',
+      format: '1.0-4',
+      visible: !this.pequena(),
+    },
     { ...colunaSituacao('Atendido'), visible: !this.pequena() },
   ]);
 

@@ -15,6 +15,7 @@ const item = (
   quantidadeNecessaria: number,
   quantidadeAtendida: number,
   unidade = 'PC',
+  quantidadeSaldo = quantidadeNecessaria,
 ): ItemSeparacao => ({
   itCodigo,
   descItem,
@@ -22,6 +23,7 @@ const item = (
   quantidadeNecessaria,
   quantidadeAtendida,
   quantidadePendente: Math.max(0, quantidadeNecessaria - quantidadeAtendida),
+  quantidadeSaldo,
 });
 
 export const PEDIDOS_MOCK: PedidoMock[] = [
@@ -43,7 +45,7 @@ export const PEDIDOS_MOCK: PedidoMock[] = [
           item('10020011', 'Parafuso sextavado M12x40', 240, 240),
           item('10020015', 'Porca sextavada M12', 240, 120),
           item('20510044', 'Chapa lateral galvanizada', 36, 12),
-          item('20510090', 'Anel de reforço', 8, 0),
+          item('20510090', 'Anel de reforço', 8, 0, 'PC', 3),
           item('30880012', 'Vedação de borracha', 15.5, 0, 'M'),
         ],
       },
