@@ -10,7 +10,8 @@
        componente que tem OP propria na mesma sequencia (subconjunto)
        nao entra - ele aparece como uma ordem separada.
      - item do pedido SEM ordem de producao: o proprio item, agrupado
-       na "ordem" 0, pendente = qt-pedida - qt-separada (es-ped-item-separ).
+       na "ordem" 0 com uma linha por sequencia do pedido, pendente =
+       qt-pedida - qt-separada (es-ped-item-separ).
    ========================================================= */
 
 BLOCK-LEVEL ON ERROR UNDO, THROW.
@@ -30,7 +31,7 @@ BLOCK-LEVEL ON ERROR UNDO, THROW.
 &GLOBAL-DEFINE SITUACOES-ABERTAS "1,2,4"
 /* Saldo do item mostrado na separacao: fora o que ja' esta' separado
    (localizacoes de separacao e reserva) e os depositos que nao servem para separar.
-   O deposito PRP so' conta para pedido PRP (pi-usa-deposito-prp). */
+   O deposito PRP so' conta para pedido PRP (pi-pedido-prp). */
 &GLOBAL-DEFINE DEPOSITOS-FORA-SALDO "CON,RET,CQ"
 &GLOBAL-DEFINE LOCALIZACOES-FORA-SALDO "separacao_prp,separacao_ordem,reserva_ordem"
 &GLOBAL-DEFINE ESTABELECIMENTO-SALDO "1"
@@ -108,13 +109,16 @@ END PROCEDURE.
    Sem busca, a lista parte das ordens abertas com reserva pendente, e
    nao dos pedidos: de ~7 mil pedidos em aberto so' uma fracao minima tem
    pendencia, e descobrir isso montando pedido por pedido levava minutos.
-   Pedido cujo unico pendente e' item sem ordem nao entra nessa lista -
+   Os pedidos PRP (reposicao) entram a parte, porque nao tem ordem. Outro
+   pedido cujo unico pendente e' item sem ordem nao entra nessa lista -
    ele continua sendo achado pela busca. */
 PROCEDURE pi-coleta-candidatos PRIVATE:
     DEFINE INPUT PARAMETER pBusca AS CHARACTER NO-UNDO.
 
-    DEFINE VARIABLE iEstado   AS INTEGER NO-UNDO.
-    DEFINE VARIABLE iNrPedido AS INTEGER NO-UNDO.
+    DEFINE VARIABLE iEstado    AS INTEGER NO-UNDO.
+    DEFINE VARIABLE iNrPedido  AS INTEGER NO-UNDO.
+    DEFINE VARIABLE iSituacao  AS INTEGER NO-UNDO.
+    DEFINE VARIABLE lPedidoPrp AS LOGICAL NO-UNDO.
 
     EMPTY TEMP-TABLE tt-candidato.
 
@@ -135,6 +139,16 @@ PROCEDURE pi-coleta-candidatos PRIVATE:
                     WHERE ped-venda.nome-abrev = ord-prod.nome-abrev
                       AND ped-venda.nr-pedcli  = ord-prod.nr-pedido NO-ERROR.
                 IF AVAILABLE ped-venda THEN
+                    RUN pi-adiciona-candidato (BUFFER ped-venda).
+            END.
+        END.
+
+        DO iSituacao = 1 TO NUM-ENTRIES({&SITUACOES-ABERTAS}):
+            FOR EACH ped-venda NO-LOCK
+               WHERE ped-venda.cod-sit-ped = INTEGER(ENTRY(iSituacao, {&SITUACOES-ABERTAS})):
+
+                RUN pi-pedido-prp (INPUT ped-venda.tp-pedido, OUTPUT lPedidoPrp).
+                IF lPedidoPrp THEN
                     RUN pi-adiciona-candidato (BUFFER ped-venda).
             END.
         END.
@@ -219,7 +233,7 @@ PROCEDURE pi-obter-ordem:
 
     /* So' aqui, e nao no pi-monta-pedido: a lista de pedidos nao mostra
        saldo e ler o estoque de cada componente deixaria a lista lenta. */
-    RUN pi-usa-deposito-prp (INPUT ped-venda.tp-pedido, OUTPUT lUsaPrp).
+    RUN pi-pedido-prp (INPUT ped-venda.tp-pedido, OUTPUT lUsaPrp).
     FOR EACH tt_item:
         RUN pi-calcula-saldo (INPUT  tt_item.it_codigo,
                               INPUT  lUsaPrp,
@@ -295,6 +309,7 @@ PROCEDURE pi-imprimir:
                                           INPUT  pSerie,
                                           INPUT  pImpressora,
                                           INPUT  tt_etiqueta.nr_ord_prod,
+                                          INPUT  tt_etiqueta.nr_sequencia,
                                           OUTPUT iFolhas).
             iFolhasTotal = iFolhasTotal + iFolhas.
         END.
@@ -371,6 +386,7 @@ PROCEDURE pi-adiciona-ordem PRIVATE:
                       AND LOOKUP(STRING(bSubconjunto.nr-linha), {&LINHAS-VALIDAS}) > 0) THEN NEXT.
 
         RUN pi-acumula-item (INPUT pOrdProd.nr-ord-produ,
+                             INPUT 0,
                              INPUT reservas.it-codigo,
                              INPUT reservas.quant-orig,
                              INPUT reservas.quant-atend).
@@ -402,33 +418,38 @@ PROCEDURE pi-adiciona-item-sem-ordem PRIVATE:
     END.
 
     RUN pi-acumula-item (INPUT 0,
+                         INPUT pPedItem.nr-sequencia,
                          INPUT pPedItem.it-codigo,
                          INPUT pPedItem.qt-pedida,
                          INPUT dQtSeparada).
 END PROCEDURE.
 
 
-/* O mesmo componente pode aparecer em mais de uma reserva da OP (ou em
-   mais de uma sequencia sem OP) - soma numa linha so'. */
+/* O mesmo componente pode aparecer em mais de uma reserva da OP - soma numa
+   linha so'. Sem OP a impressao e' por sequencia: o mesmo item em duas
+   sequencias fica em duas linhas (pNrSequencia e' 0 nos itens de ordem). */
 PROCEDURE pi-acumula-item PRIVATE:
-    DEFINE INPUT PARAMETER pNrOrdProd AS INTEGER   NO-UNDO.
-    DEFINE INPUT PARAMETER pItCodigo  AS CHARACTER NO-UNDO.
-    DEFINE INPUT PARAMETER pQtOrig    AS DECIMAL   NO-UNDO.
-    DEFINE INPUT PARAMETER pQtAtend   AS DECIMAL   NO-UNDO.
+    DEFINE INPUT PARAMETER pNrOrdProd   AS INTEGER   NO-UNDO.
+    DEFINE INPUT PARAMETER pNrSequencia AS INTEGER   NO-UNDO.
+    DEFINE INPUT PARAMETER pItCodigo    AS CHARACTER NO-UNDO.
+    DEFINE INPUT PARAMETER pQtOrig      AS DECIMAL   NO-UNDO.
+    DEFINE INPUT PARAMETER pQtAtend     AS DECIMAL   NO-UNDO.
 
     DEFINE BUFFER bItem FOR item.
 
     FIND tt_item
-        WHERE tt_item.nr_ord_prod = pNrOrdProd
-          AND tt_item.it_codigo   = pItCodigo NO-ERROR.
+        WHERE tt_item.nr_ord_prod  = pNrOrdProd
+          AND tt_item.nr_sequencia = pNrSequencia
+          AND tt_item.it_codigo    = pItCodigo NO-ERROR.
     IF NOT AVAILABLE tt_item THEN DO:
         FIND FIRST bItem NO-LOCK WHERE bItem.it-codigo = pItCodigo NO-ERROR.
 
         CREATE tt_item.
-        ASSIGN tt_item.nr_ord_prod = pNrOrdProd
-               tt_item.it_codigo   = pItCodigo
-               tt_item.desc_item   = IF AVAILABLE bItem THEN bItem.desc-item ELSE ""
-               tt_item.un          = IF AVAILABLE bItem THEN bItem.un ELSE "".
+        ASSIGN tt_item.nr_ord_prod  = pNrOrdProd
+               tt_item.nr_sequencia = pNrSequencia
+               tt_item.it_codigo    = pItCodigo
+               tt_item.desc_item    = IF AVAILABLE bItem THEN bItem.desc-item ELSE ""
+               tt_item.un           = IF AVAILABLE bItem THEN bItem.un ELSE "".
     END.
 
     ASSIGN tt_item.quant_orig     = tt_item.quant_orig  + pQtOrig
@@ -437,12 +458,18 @@ PROCEDURE pi-acumula-item PRIVATE:
 END PROCEDURE.
 
 
-/* Pedido PRP pode usar o saldo do deposito PRP; os demais nao. */
-PROCEDURE pi-usa-deposito-prp PRIVATE:
-    DEFINE INPUT  PARAMETER p-tp-pedido AS CHARACTER NO-UNDO.
-    DEFINE OUTPUT PARAMETER p-usa-prp   AS LOGICAL   NO-UNDO.
+/* Pedido PRP e' o pedido de reposicao: nao tem ordem e pode usar o saldo do
+   deposito PRP. Tipo de um digito ("1") equivale ao de dois ("01"), como na
+   ESCP9967. */
+PROCEDURE pi-pedido-prp PRIVATE:
+    DEFINE INPUT  PARAMETER p-tp-pedido  AS CHARACTER NO-UNDO.
+    DEFINE OUTPUT PARAMETER p-pedido-prp AS LOGICAL   NO-UNDO.
 
-    p-usa-prp = LOOKUP(TRIM(p-tp-pedido), {&TIPOS-PEDIDO-PRP}) > 0.
+    p-tp-pedido = TRIM(p-tp-pedido).
+    IF LENGTH(p-tp-pedido) = 1 THEN
+        p-tp-pedido = "0" + p-tp-pedido.
+
+    p-pedido-prp = LOOKUP(p-tp-pedido, {&TIPOS-PEDIDO-PRP}) > 0.
 END PROCEDURE.
 
 

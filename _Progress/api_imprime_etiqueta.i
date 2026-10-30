@@ -30,8 +30,10 @@ DEFINE TEMP-TABLE tt_ordem NO-UNDO
     FIELD qtd_itens_pendentes AS INTEGER
     INDEX idx-ordem IS PRIMARY UNIQUE nr_ord_prod.
 
+/* nr_sequencia so' vem preenchida nos itens sem ordem (nr_ord_prod = 0) */
 DEFINE TEMP-TABLE tt_item NO-UNDO
     FIELD nr_ord_prod    AS INTEGER
+    FIELD nr_sequencia   AS INTEGER
     FIELD it_codigo      AS CHARACTER
     FIELD desc_item      AS CHARACTER
     FIELD un             AS CHARACTER
@@ -39,7 +41,7 @@ DEFINE TEMP-TABLE tt_item NO-UNDO
     FIELD quant_atend    AS DECIMAL
     FIELD quant_pendente AS DECIMAL
     FIELD quant_saldo    AS DECIMAL
-    INDEX idx-item IS PRIMARY UNIQUE nr_ord_prod it_codigo.
+    INDEX idx-item IS PRIMARY UNIQUE nr_ord_prod nr_sequencia it_codigo.
 
 /* Copiada por nome de campo da tt_impressora do Cadastro de Impressoras
    (cdp/api_cadastro_impressora.i) - so' os campos que a tela usa. */
@@ -51,6 +53,7 @@ DEFINE TEMP-TABLE tt_impressora NO-UNDO
 DEFINE TEMP-TABLE tt_etiqueta NO-UNDO
     FIELD it_codigo     AS CHARACTER
     FIELD nr_ord_prod   AS INTEGER
+    FIELD nr_sequencia  AS INTEGER
     FIELD quantidade    AS DECIMAL
     FIELD qtd_etiquetas AS INTEGER.
 

@@ -163,6 +163,7 @@ export class ImpressaoModalComponent {
       etiquetas: this.itensEmEdicao().map((item, indice) => ({
         itCodigo: item.itCodigo,
         nrOrdProd: this.nrOrdProd(),
+        nrSequencia: item.nrSequencia,
         ...etiquetas[indice],
       })),
     };

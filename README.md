@@ -7,6 +7,9 @@ Fluxo: **Pedidos → Ordens do pedido → Itens da ordem → Imprimir**. Os iten
 quantidade pendente (`quant-orig - quant-atend` das reservas) já vêm marcados; a
 quantidade por etiqueta e o número de etiquetas são sugeridos e editáveis.
 
+Pedido de reposição (tipo PRP) não tem ordem: os itens ficam na linha **Sem ordem**, listados por
+sequência do pedido, e a etiqueta sai com `SEQ:` no lugar de `OP:`.
+
 ## Estrutura
 
 ```
@@ -39,11 +42,11 @@ Base: `/api/cpp/v1/api_imprime_etiqueta/` — todas `POST`, erros de negócio em
 
 | Rota | Payload | Retorno |
 |---|---|---|
-| `pedidos/` | `busca`, `pagina`, `tamanho` (sem busca: pedidos das OPs abertas com reserva pendente; com busca: qualquer pedido em aberto com item pendente; por entrega) | `tt_pedido`, `tt_pagina.tem_mais` |
+| `pedidos/` | `busca`, `pagina`, `tamanho` (sem busca: pedidos das OPs abertas com reserva pendente e pedidos PRP em aberto com item pendente; com busca: qualquer pedido em aberto com item pendente; por entrega) | `tt_pedido`, `tt_pagina.tem_mais` |
 | `pedido/` | `nr_pedido` | `tt_pedido`, `tt_ordem` |
 | `ordem/` | `nr_pedido`, `nr_ord_prod` (0 = itens sem ordem) | `tt_ordem`, `tt_item` |
 | `impressoras/` | — | `tt_impressora` (impressoras de etiqueta ativas do Cadastro de Impressoras) |
-| `imprimir/` | `impressora`, `lote`, `serie`, `tt_etiqueta[]` | `tt_resultado.qtd_folhas` |
+| `imprimir/` | `impressora`, `lote`, `serie`, `tt_etiqueta[]` (`nr_sequencia` nos itens sem ordem) | `tt_resultado.qtd_folhas` |
 
 A impressão não fala com a impressora: grava uma folha (2 etiquetas) por registro em
 `es-fila-etiqueta`, e o **roboEtiquetaItem** imprime. Por isso a tela informa
@@ -51,9 +54,12 @@ A impressão não fala com a impressora: grava uma folha (2 etiquetas) por regis
 
 O `roboEtiquetaItem` é separado do `roboEtiqueta`, que imprime cupom fiscal: uma impressora
 de etiqueta parada não pode segurar os cupons. Cada folha vai direto para a impressora com
-`OS-COPY`, como no `esp/etiqueta-item.p`. Se a cópia falhar, a folha fica na fila, tenta de novo
-na próxima batida do timer e o erro aparece na janela do robô até uma cópia dar certo. O título
-da janela mostra a impressora em envio: se a cópia prender, é lá que se vê em qual delas parou.
+`OS-COPY`, como no `esp/etiqueta-item.p`. Como o `OS-COPY` não tem tempo limite, o robô antes testa
+se a máquina do caminho `\\maquina\impressora` responde na porta 445, com limite de 2 segundos. Se
+o teste ou a cópia falhar, as folhas dessa impressora são descartadas: acumuladas na fila, sairiam
+todas de uma vez quando ela voltasse. Quem imprimiu precisa pedir de novo pela tela. O erro e o
+total de folhas descartadas ficam na janela do robô até uma cópia dar certo. O título da janela
+mostra a impressora em envio: se uma cópia ainda prender, é lá que se vê em qual delas parou.
 
 ## Desenvolvimento
 
@@ -94,5 +100,9 @@ A ordem importa: com a API publicada antes do robô, as etiquetas ficam na fila 
 8. **Acentos** na descrição saem corretos (o robô grava sem conversão, como o original).
 9. **Transação**: pedir impressão com um item inexistente junto de um válido → nada entra na fila.
 10. **Impressora não cadastrada, inativa ou de outro tipo** no payload é recusada.
-11. **Impressora parada**: com uma impressora offline, observar se o robô continua respondendo e o que o título da janela mostra.
-12. **Falha de cópia**: com um caminho inválido, a folha continua na fila, o erro aparece na janela e o robô segue imprimindo nas outras impressoras.
+11. **IP errado**: com um IP que não responde no cadastro, o robô continua respondendo, mostra "Maquina da impressora nao responde" com as folhas descartadas, a fila esvazia e as outras impressoras seguem imprimindo.
+12. **Falha de cópia**: com um caminho inválido, as folhas são descartadas, o erro aparece na janela e o robô segue imprimindo nas outras impressoras.
+13. **Índice da leitura PRP**: compilar com `XREF` e conferir se o `FOR EACH ped-venda WHERE cod-sit-ped` do `pi-coleta-candidatos` não aparece como `WHOLE-INDEX`.
+14. **Tempo da lista**: medir de novo a 1ª página de `pedidos/` sem busca, agora com os pedidos PRP (antes ~2 s).
+15. **Pedido PRP sem ordem**: aparece na lista sem busca? Abrir **Sem ordem**: itens por sequência, e o mesmo item em duas sequências fica em duas linhas com o pendente de cada uma. Conferir também se algum item some por não ter `es-ped-item-fat`.
+16. **Etiqueta `SEQ:`**: imprimir item sem ordem e conferir se `SEQ:` e o número cabem no espaço de `OP:` do `ITEM-CASP.prn`.

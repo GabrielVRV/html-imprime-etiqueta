@@ -17,6 +17,7 @@ const item = (
   unidade = 'PC',
   quantidadeSaldo = quantidadeNecessaria,
 ): ItemSeparacao => ({
+  nrSequencia: 0,
   itCodigo,
   descItem,
   unidade,
@@ -26,7 +27,35 @@ const item = (
   quantidadeSaldo,
 });
 
+const itemSemOrdem = (nrSequencia: number, ...dados: Parameters<typeof item>): ItemSeparacao => ({
+  ...item(...dados),
+  nrSequencia,
+});
+
 export const PEDIDOS_MOCK: PedidoMock[] = [
+  {
+    nrPedido: 104575,
+    nrPedCli: 'REP-0098',
+    codEmitente: 3105,
+    nomeAbrev: 'REVENDA-SUL',
+    dataEntrega: hojeMaisDias(1),
+    ordens: [
+      {
+        nrOrdProd: 0,
+        nrSequencia: 0,
+        itCodigo: '',
+        descItem: 'Itens do pedido sem ordem de produção',
+        quantidadeOrdem: 0,
+        estado: '',
+        itens: [
+          itemSemOrdem(10, '40110001', 'Rolamento 6205', 12, 0),
+          itemSemOrdem(20, '10020011', 'Parafuso sextavado M12x40', 100, 100),
+          itemSemOrdem(30, '40110001', 'Rolamento 6205', 6, 2),
+          itemSemOrdem(40, '60330001', 'Rolete de carga', 8, 0, 'PC', 2),
+        ],
+      },
+    ],
+  },
   {
     nrPedido: 104512,
     nrPedCli: 'PC-88123',
@@ -68,7 +97,7 @@ export const PEDIDOS_MOCK: PedidoMock[] = [
         descItem: 'Itens do pedido sem ordem de produção',
         quantidadeOrdem: 0,
         estado: '',
-        itens: [item('90000123', 'Kit manual técnico', 1, 0, 'UN')],
+        itens: [itemSemOrdem(30, '90000123', 'Kit manual técnico', 1, 0, 'UN')],
       },
     ],
   },

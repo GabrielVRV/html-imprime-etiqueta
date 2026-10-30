@@ -28,10 +28,13 @@
           <div class="po-sm-12 po-md-6 item">
             <strong>{{ itensEmEdicao()[i].itCodigo }}</strong>
             <span>{{ itensEmEdicao()[i].descItem }}</span>
-            <small
-              >Pendente: {{ itensEmEdicao()[i].quantidadePendente | number: '1.0-4' }}
-              {{ itensEmEdicao()[i].unidade }}</small
-            >
+            <small>
+              @if (itensEmEdicao()[i].nrSequencia) {
+                Seq. {{ itensEmEdicao()[i].nrSequencia }} ·
+              }
+              Pendente: {{ itensEmEdicao()[i].quantidadePendente | number: '1.0-4' }}
+              {{ itensEmEdicao()[i].unidade }}
+            </small>
           </div>
           <po-decimal
             class="po-sm-6 po-md-3"

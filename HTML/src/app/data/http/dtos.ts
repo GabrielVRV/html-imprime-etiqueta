@@ -24,6 +24,7 @@ export interface OrdemDto {
 }
 
 export interface ItemDto {
+  nr_sequencia: number;
   it_codigo: string;
   desc_item: string;
   un: string;
@@ -41,6 +42,7 @@ export interface ImpressoraDto {
 export interface EtiquetaDto {
   it_codigo: string;
   nr_ord_prod: number;
+  nr_sequencia: number;
   quantidade: number;
   qtd_etiquetas: number;
 }

@@ -8,6 +8,7 @@ import {
 } from './etiqueta.rules';
 
 const item = (quantidadePendente: number): ItemSeparacao => ({
+  nrSequencia: 0,
   itCodigo: '10-001',
   descItem: 'Parafuso',
   unidade: 'PC',
@@ -41,9 +42,14 @@ describe('etiqueta.rules', () => {
     expect(sugerirEtiqueta(item(7.5), 123)).toEqual({
       itCodigo: '10-001',
       nrOrdProd: 123,
+      nrSequencia: 0,
       quantidadePorEtiqueta: 7.5,
       quantidadeEtiquetas: 2,
     });
+  });
+
+  it('leva a sequência do pedido na etiqueta de item sem ordem', () => {
+    expect(sugerirEtiqueta({ ...item(1), nrSequencia: 20 }, 0).nrSequencia).toBe(20);
   });
 
   it('calcula percentual separado', () => {

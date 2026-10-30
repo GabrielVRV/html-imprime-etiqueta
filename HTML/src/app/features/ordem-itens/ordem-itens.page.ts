@@ -117,6 +117,7 @@ export class OrdemItensPage {
   ]);
 
   protected readonly colunas = computed<PoTableColumn[]>(() => [
+    { property: 'nrSequencia', label: 'Seq.', width: '70px', visible: this.semOrdem() },
     // No celular código e descrição dividem uma coluna para caber sem rolagem lateral.
     { property: 'itemCompleto', label: 'Item', visible: this.pequena() },
     { property: 'itCodigo', label: 'Item', width: '130px', visible: !this.pequena() },

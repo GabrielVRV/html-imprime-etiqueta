@@ -8,6 +8,7 @@ export interface Impressora {
 export interface EtiquetaSolicitada {
   itCodigo: string;
   nrOrdProd: number;
+  nrSequencia: number;
   quantidadePorEtiqueta: number;
   quantidadeEtiquetas: number;
 }

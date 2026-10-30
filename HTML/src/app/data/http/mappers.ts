@@ -24,6 +24,7 @@ export const toOrdem = (dto: OrdemDto): Ordem => ({
 });
 
 export const toItemSeparacao = (dto: ItemDto): ItemSeparacao => ({
+  nrSequencia: dto.nr_sequencia,
   itCodigo: dto.it_codigo,
   descItem: dto.desc_item,
   unidade: dto.un,
@@ -41,6 +42,7 @@ export const toImpressora = (dto: ImpressoraDto): Impressora => ({
 export const toEtiquetaDto = (etiqueta: EtiquetaSolicitada): EtiquetaDto => ({
   it_codigo: etiqueta.itCodigo,
   nr_ord_prod: etiqueta.nrOrdProd,
+  nr_sequencia: etiqueta.nrSequencia,
   quantidade: etiqueta.quantidadePorEtiqueta,
   qtd_etiquetas: etiqueta.quantidadeEtiquetas,
 });

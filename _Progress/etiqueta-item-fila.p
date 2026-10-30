@@ -26,6 +26,7 @@ DEFINE INPUT  PARAMETER p-lote        AS CHARACTER NO-UNDO.
 DEFINE INPUT  PARAMETER p-serie       AS CHARACTER NO-UNDO.
 DEFINE INPUT  PARAMETER p-impressora  AS CHARACTER NO-UNDO.
 DEFINE INPUT  PARAMETER p-nr-ord-prod AS INTEGER   NO-UNDO.
+DEFINE INPUT  PARAMETER p-nr-sequencia AS INTEGER  NO-UNDO.
 DEFINE OUTPUT PARAMETER p-qtd-folhas  AS INTEGER   NO-UNDO.
 
 &GLOBAL-DEFINE ETIQUETAS-POR-FOLHA 2
@@ -39,6 +40,8 @@ DEFINE VARIABLE cQuantidade  AS CHARACTER NO-UNDO.
 DEFINE VARIABLE iIdEtiqueta1 AS INTEGER   NO-UNDO.
 DEFINE VARIABLE iIdEtiqueta2 AS INTEGER   NO-UNDO.
 DEFINE VARIABLE iFolha       AS INTEGER   NO-UNDO.
+DEFINE VARIABLE cRotuloOp    AS CHARACTER NO-UNDO.
+DEFINE VARIABLE cNumeroOp    AS CHARACTER NO-UNDO.
 
 cModelo = SEARCH("etiquetas/ITEM-CASP.prn").
 IF cModelo = ? THEN
@@ -60,6 +63,14 @@ IF INDEX(cQuantidade, ",") = 0 THEN
 IF p-quantidade < 1 THEN
     cQuantidade = "0" + cQuantidade.
 
+/* Item sem ordem usa o mesmo espaco do modelo para a sequencia do pedido. */
+IF p-nr-ord-prod <> 0 THEN
+    ASSIGN cRotuloOp = "OP:"
+           cNumeroOp = STRING(p-nr-ord-prod).
+ELSE IF p-nr-sequencia <> 0 THEN
+    ASSIGN cRotuloOp = "SEQ:"
+           cNumeroOp = STRING(p-nr-sequencia).
+
 p-qtd-folhas = INTEGER(TRUNCATE((p-qtde-etiq + {&ETIQUETAS-POR-FOLHA} - 1) / {&ETIQUETAS-POR-FOLHA}, 0)).
 
 DO iFolha = 1 TO p-qtd-folhas:
@@ -76,8 +87,8 @@ DO iFolha = 1 TO p-qtd-folhas:
     lcEtiqueta = REPLACE(lcEtiqueta, "[DEP]",         item.deposito-pad).
     lcEtiqueta = REPLACE(lcEtiqueta, "[LOTE]",        p-lote).
     lcEtiqueta = REPLACE(lcEtiqueta, "[SERIE]",       p-serie).
-    lcEtiqueta = REPLACE(lcEtiqueta, "[OP]",          IF p-nr-ord-prod <> 0 THEN "OP:" ELSE "").
-    lcEtiqueta = REPLACE(lcEtiqueta, "[NR-OP]",       IF p-nr-ord-prod <> 0 THEN STRING(p-nr-ord-prod) ELSE "").
+    lcEtiqueta = REPLACE(lcEtiqueta, "[OP]",          cRotuloOp).
+    lcEtiqueta = REPLACE(lcEtiqueta, "[NR-OP]",       cNumeroOp).
     lcEtiqueta = REPLACE(lcEtiqueta, "[QT-ETIQ]",     "1").
 
     IF LENGTH(lcEtiqueta) > {&TAMANHO-MAXIMO} THEN

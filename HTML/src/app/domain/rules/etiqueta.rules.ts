@@ -20,6 +20,7 @@ export function sugerirEtiqueta(item: ItemSeparacao, nrOrdProd: number): Etiquet
   return {
     itCodigo: item.itCodigo,
     nrOrdProd,
+    nrSequencia: item.nrSequencia,
     quantidadePorEtiqueta: item.quantidadePendente,
     quantidadeEtiquetas: ETIQUETAS_POR_FOLHA,
   };

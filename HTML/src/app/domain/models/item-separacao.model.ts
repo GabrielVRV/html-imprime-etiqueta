@@ -1,4 +1,6 @@
 export interface ItemSeparacao {
+  /** Sequência do pedido nos itens sem ordem; 0 nos itens de uma ordem. */
+  nrSequencia: number;
   itCodigo: string;
   descItem: string;
   unidade: string;
