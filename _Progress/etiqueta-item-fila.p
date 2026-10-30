@@ -5,7 +5,7 @@
    Monta a etiqueta igual ao original (mesmo modelo ITEM-CASP.prn,
    mesmos IDs de es-id-etiqueta-item e mesmos campos), mas em vez de
    copiar um arquivo para a impressora grava a folha na fila
-   es-imprime-etiqueta, que o roboEtiqueta imprime no servidor Windows -
+   es-fila-etiqueta, que o roboEtiquetaItem imprime no servidor Windows -
    o servidor da API nao enxerga as impressoras.
 
    Diferencas propositais em relacao ao original:
@@ -81,11 +81,11 @@ DO iFolha = 1 TO p-qtd-folhas:
     lcEtiqueta = REPLACE(lcEtiqueta, "[QT-ETIQ]",     "1").
 
     IF LENGTH(lcEtiqueta) > {&TAMANHO-MAXIMO} THEN
-        UNDO, THROW NEW Progress.Lang.AppError("Etiqueta gerada maior que o campo es-imprime-etiqueta.conteudo.", 1).
+        UNDO, THROW NEW Progress.Lang.AppError("Etiqueta gerada maior que o campo es-fila-etiqueta.conteudo.", 1).
 
-    CREATE es-imprime-etiqueta.
-    ASSIGN es-imprime-etiqueta.destino  = TRIM(p-impressora)
-           es-imprime-etiqueta.conteudo = STRING(lcEtiqueta).
+    CREATE es-fila-etiqueta.
+    ASSIGN es-fila-etiqueta.destino  = TRIM(p-impressora)
+           es-fila-etiqueta.conteudo = STRING(lcEtiqueta).
 END.
 
 

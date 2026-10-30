@@ -23,7 +23,9 @@ _Progress/
   api_imprime_etiqueta.i   temp-tables (contrato JSON com o front)
   api_imprime_etiqueta.p   rotas REST (ut-api)
   api_imprime_etiquetarp.p regras: pedidos, ordens, itens pendentes, impressão
-  etiqueta-item-fila.p     versão do esp/etiqueta-item.p que grava na fila do roboEtiqueta
+  etiqueta-item-fila.p     versão do esp/etiqueta-item.p que grava na fila do roboEtiquetaItem
+  es-fila-etiqueta.df      tabela da fila de etiquetas
+  roboEtiquetaItem.w/.wrx  robô que imprime a fila de etiquetas
 Exemplo/                   fontes de referência (ESCP1001, etiqueta-item, roboEtiqueta, .df)
 ```
 
@@ -44,8 +46,14 @@ Base: `/api/cpp/v1/api_imprime_etiqueta/` — todas `POST`, erros de negócio em
 | `imprimir/` | `impressora`, `lote`, `serie`, `tt_etiqueta[]` | `tt_resultado.qtd_folhas` |
 
 A impressão não fala com a impressora: grava uma folha (2 etiquetas) por registro em
-`es-imprime-etiqueta`, e o **roboEtiqueta** imprime. Por isso a tela informa
+`es-fila-etiqueta`, e o **roboEtiquetaItem** imprime. Por isso a tela informa
 "enviado para a fila", não "impresso".
+
+O `roboEtiquetaItem` é separado do `roboEtiqueta`, que imprime cupom fiscal: uma impressora
+de etiqueta parada não pode segurar os cupons. Cada folha vai direto para a impressora com
+`OS-COPY`, como no `esp/etiqueta-item.p`. Se a cópia falhar, a folha fica na fila, tenta de novo
+na próxima batida do timer e o erro aparece na janela do robô até uma cópia dar certo. O título
+da janela mostra a impressora em envio: se a cópia prender, é lá que se vê em qual delas parou.
 
 ## Desenvolvimento
 
@@ -62,10 +70,14 @@ npm run build      # build de produção em HTML/dist/imprime-etiqueta
 
 ## Implantação
 
-1. Compilar `_Progress/api_imprime_etiqueta.p`, `api_imprime_etiquetarp.p` e
+1. Carregar `_Progress/es-fila-etiqueta.df` no banco `mgesp`.
+2. Compilar `_Progress/roboEtiquetaItem.w` (com o `.wrx` ao lado) e deixar o robô rodando no servidor Windows que enxerga as impressoras.
+3. Compilar `_Progress/api_imprime_etiqueta.p`, `api_imprime_etiquetarp.p` e
    `etiqueta-item-fila.p` (o `.i` vai em `include/`; os `.p` em `cpp/`, igual ao Pedidos Sequenciados).
-2. Publicar a API no mesmo módulo `cpp` das outras APIs.
-3. `npm run build` e copiar o conteúdo de `HTML/dist/imprime-etiqueta/` para a pasta HTML publicada no Datasul.
+4. Publicar a API no mesmo módulo `cpp` das outras APIs.
+5. `npm run build` e copiar o conteúdo de `HTML/dist/imprime-etiqueta/` para a pasta HTML publicada no Datasul.
+
+A ordem importa: com a API publicada antes do robô, as etiquetas ficam na fila sem ninguém imprimir.
 
 ## Roteiro de testes no servidor
 
@@ -79,6 +91,8 @@ npm run build      # build de produção em HTML/dist/imprime-etiqueta
 6. **Formato decimal**: imprimir quantidade 15,5 e 0,5 → etiqueta e código de barras com `15,5` e `0,5`.
 7. **Etiqueta idêntica**: imprimir o mesmo item pela ESCP1001 e pela tela nova e comparar
    (o original gravava com `EXPORT`, que põe aspas; o robô usa `PUT CONTROL`, sem aspas).
-8. **Acentos** na descrição saem corretos (o robô converte UTF-8 → ISO8859-1).
+8. **Acentos** na descrição saem corretos (o robô grava sem conversão, como o original).
 9. **Transação**: pedir impressão com um item inexistente junto de um válido → nada entra na fila.
 10. **Impressora não cadastrada, inativa ou de outro tipo** no payload é recusada.
+11. **Impressora parada**: com uma impressora offline, observar se o robô continua respondendo e o que o título da janela mostra.
+12. **Falha de cópia**: com um caminho inválido, a folha continua na fila, o erro aparece na janela e o robô segue imprimindo nas outras impressoras.

@@ -271,7 +271,7 @@ END PROCEDURE.
 
 
 /* Grava todas as folhas numa transacao so': se uma etiqueta falhar,
-   nada vai para a fila do roboEtiqueta (sem impressao pela metade). */
+   nada vai para a fila do roboEtiquetaItem (sem impressao pela metade). */
 PROCEDURE pi-imprimir:
     DEFINE INPUT  PARAMETER pImpressora AS CHARACTER NO-UNDO.
     DEFINE INPUT  PARAMETER pLote       AS CHARACTER NO-UNDO.
